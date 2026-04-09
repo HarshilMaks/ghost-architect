@@ -24,6 +24,8 @@ data/dataset.json
 .idea/
 *.swp
 *.swo
+.zip
+*.tar.gz
 
 # OS
 .DS_Store
@@ -43,3 +45,4 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+final_adapter.zip

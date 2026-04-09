@@ -12,6 +12,7 @@ Run on Colab (after training completes):
 
 import re
 import io
+import html as html_lib
 from uuid import uuid4
 from pathlib import Path
 
@@ -239,6 +240,243 @@ def split_consolidated_output(final_output: str) -> tuple[str | None, str]:
         return mermaid_part.strip() or None, sql_part.strip()
 
     return None, _strip_markdown_code_fence(final_output)
+
+
+def build_mermaid_html(mermaid_diagram: str, title: str, sql_source: str = "") -> str:
+    """Build a polished Mermaid preview HTML with diagram, source blocks, and SQL."""
+    safe_title = html_lib.escape(title)
+    safe_sql = html_lib.escape(sql_source.strip())
+    mermaid_source = _strip_markdown_code_fence(mermaid_diagram).strip()
+    safe_mermaid_source = html_lib.escape(mermaid_source)
+    diagram_source = safe_mermaid_source or "erDiagram\\n    %% No Mermaid diagram found."
+
+    mermaid_block = f"""
+        <details>
+          <summary>Show Mermaid source</summary>
+          <pre class="source-block">{safe_mermaid_source or "(empty)"}</pre>
+        </details>
+        """
+    sql_block = f"""
+        <details>
+          <summary>Show SQL statements</summary>
+          <pre class="source-block">{safe_sql or "(empty)"}</pre>
+        </details>
+        """ if safe_sql else ""
+
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{safe_title}</title>
+  <style>
+    :root {{
+      color-scheme: light;
+      --bg: #f8fafc;
+      --panel: #ffffff;
+      --border: #dbe4ee;
+      --text: #0f172a;
+      --muted: #475569;
+      --accent: #2563eb;
+      --accent-soft: #dbeafe;
+    }}
+    body {{
+      margin: 0;
+      background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }}
+    .page {{
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 24px;
+    }}
+    .header {{
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+    }}
+    .title {{
+      margin: 0;
+      font-size: 24px;
+      letter-spacing: -0.02em;
+    }}
+    .subtitle {{
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }}
+    .badge {{
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: rgba(255,255,255,0.85);
+      font-size: 13px;
+      color: var(--muted);
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+    }}
+    .card {{
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      box-shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
+      overflow: hidden;
+    }}
+    .card-head {{
+      padding: 18px 20px 0;
+    }}
+    .eyebrow {{
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: #1d4ed8;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }}
+    .description {{
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }}
+    .diagram-wrap {{
+      margin: 18px 20px 0;
+      padding: 20px;
+      border: 1px solid #cbd5e1;
+      border-radius: 18px;
+      background: linear-gradient(180deg, #eef2ff 0%, #f8fafc 52%, #e2e8f0 100%);
+      overflow: auto;
+    }}
+    .diagram-wrap .mermaid {{
+      min-width: fit-content;
+      padding: 12px;
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.7) 0%, rgba(248,250,252,0.92) 100%);
+    }}
+    .diagram-wrap svg {{
+      max-width: none !important;
+      height: auto !important;
+      background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%) !important;
+      border-radius: 16px;
+      box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.18);
+    }}
+    .source-block {{
+      margin: 0;
+      padding: 16px;
+      overflow-x: auto;
+      white-space: pre;
+      background: #0f172a;
+      color: #e2e8f0;
+      border: 1px solid #1e293b;
+      border-radius: 14px;
+      font-size: 13px;
+      line-height: 1.55;
+    }}
+    details {{
+      border-top: 1px solid var(--border);
+      padding: 16px 20px 18px;
+      background: #f8fafc;
+    }}
+    details summary {{
+      cursor: pointer;
+      color: var(--accent);
+      font-weight: 700;
+      margin-bottom: 12px;
+    }}
+    details pre {{
+      margin: 0;
+      padding: 16px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: #0f172a;
+      color: #e2e8f0;
+      border: 1px solid #1e293b;
+      border-radius: 14px;
+      font-size: 13px;
+      line-height: 1.5;
+    }}
+    .footer-note {{
+      padding: 0 20px 20px;
+      color: var(--muted);
+      font-size: 13px;
+    }}
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="header">
+      <div>
+        <h1 class="title">{safe_title}</h1>
+        <p class="subtitle">Premium Mermaid ER diagram with database relationships.</p>
+      </div>
+      <div class="badge">Ghost Architect · Local Inference</div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <span class="eyebrow">Database Schema</span>
+        <p class="description">Visual ER diagram of your inferred PostgreSQL schema</p>
+      </div>
+      <div class="diagram-wrap">
+        <div class="mermaid">
+{diagram_source}
+        </div>
+      </div>
+      {mermaid_block}
+      {sql_block}
+      <div class="footer-note">Copy the SQL statements or use the Mermaid diagram in any renderer.</div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {{
+      mermaid.initialize({{
+        startOnLoad: false,
+        theme: 'base',
+        securityLevel: 'loose',
+        darkMode: false,
+        er: {{
+          useMaxWidth: true,
+          layoutDirection: 'TB',
+          diagramPadding: 28
+        }},
+        themeVariables: {{
+          fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+          fontSize: '15px',
+          background: '#eef2ff',
+          primaryColor: '#eff6ff',
+          primaryTextColor: '#0f172a',
+          primaryBorderColor: '#60a5fa',
+          secondaryColor: '#f8fafc',
+          secondaryTextColor: '#0f172a',
+          secondaryBorderColor: '#cbd5e1',
+          tertiaryColor: '#ffffff',
+          tertiaryTextColor: '#0f172a',
+          noteBkgColor: '#ecfeff',
+          noteTextColor: '#0f172a',
+          noteBorderColor: '#67e8f9',
+          lineColor: '#64748b',
+          textColor: '#0f172a'
+        }}
+      }});
+      mermaid.run({{ querySelector: '.mermaid' }});
+    }});
+  </script>
+</body>
+</html>
+"""
 
 
 def consolidate_sql_with_llm(model, processor, per_image_sql: list[tuple], uploaded_files) -> str:
@@ -537,13 +775,18 @@ with col_schema:
                 f"Consolidated schema generated from {len(uploaded_files)} screenshots."
             )
 
-            # ── Primary output tabs: Mermaid + SQL ───────────────────────────
+            # ── Primary output: Beautiful Mermaid HTML + SQL Tabs ───────────────
             tab_visual, tab_sql = st.tabs(["📊 Visual Architecture", "💻 PostgreSQL Code"])
 
             with tab_visual:
                 if mermaid_diagram:
-                    st.markdown("### Entity-Relationship Diagram")
-                    st.markdown(f"```mermaid\n{mermaid_diagram}\n```")
+                    # Build and render the beautiful HTML preview
+                    html_preview = build_mermaid_html(
+                        mermaid_diagram=mermaid_diagram,
+                        title="Ghost Architect: Database Schema",
+                        sql_source=consolidated_sql or "",
+                    )
+                    st.components.v1.html(html_preview, height=900, scrolling=True)
                 elif merged_tables:
                     st.markdown(
                         "<p style='color:#64748b;font-size:12px;'>"
