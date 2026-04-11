@@ -1,7 +1,62 @@
-# Gemma-3 Progressive Implementation Plan
+# Ghost Architect: Implementation Plan vs Actual Execution
 
 ## Overview
-This document provides a detailed step-by-step implementation plan for building a Gemma-3-12B fine-tuning system that progresses from basic text fine-tuning to the advanced "Ghost Architect" UI-to-SQL system.
+This document describes the original implementation plan for Ghost Architect and compares it to what was actually built. The project has evolved from the initial three-phase approach to a streamlined, production-ready system.
+
+---
+
+## What Actually Got Built (The Real Story)
+
+### Original Plan
+```
+Phase 1 (2-3 weeks):  Text fine-tuning on Colab T4 (QLoRA + DoRA + rsLoRA)
+        ↓
+Phase 2 (4-6 weeks):  Vision training on Modal A10G + Colab T4 (UI→SQL)
+        ↓
+Phase 3 (1-2 weeks):  GGUF export + Ollama + Streamlit deployment
+        ↓
+Total: 7-11 weeks
+```
+
+### Actual Execution
+```
+Phase 1: ❌ SKIPPED
+  Reason: Direct jump to vision training was more efficient
+  Time saved: 2-3 weeks
+
+Phase 2A (Modal): ❌ FAILED at 15%
+  GPU: A10G (powerful, $1.65 spent)
+  Issue: Hit $5 credit limit before completion
+  Time spent: 1 week
+  Result: Incomplete model weights, not usable
+
+Phase 2B (Kaggle): ✅ SUCCESS
+  GPU: RTX Pro 6000 (24GB VRAM, professional)
+  Result: Full training complete, production-ready model
+  Time: 1 session (4-6 hours), March 2026
+  Dataset: 5,287 UI-SQL pairs (287 real + 5,000 synthetic)
+
+Phase 3: ✅ COMPLETE
+  Deployment: Streamlit app (src/app.py)
+  Visualization: Beautiful Mermaid ER diagrams
+  Features: Multi-image consolidation, PostgreSQL generation
+  Status: Production-ready, tested and working
+  Time: 1 week
+
+Total: 2 weeks (vs 7-11 weeks planned)
+```
+
+### Key Decisions Made
+
+| Decision | Original | Actual | Why |
+|----------|----------|--------|-----|
+| **Training platform** | Colab T4 (free) | Kaggle RTX Pro 6000 | Reliability + full Trinity support + 24GB VRAM |
+| **Phase 1** | Yes (text training) | Skip | Not needed for vision task |
+| **Modal A10G** | Backup path | Abandoned | Credit limit hit, unreliable |
+| **Export format** | GGUF + Ollama | Adapter direct use | Simpler deployment, fast inference |
+| **Deployment** | FastAPI + cloud | Streamlit local | No DevOps complexity, works offline |
+
+---
 
 ## 📚 Understanding the Trinity Architecture (Learning Foundation)
 

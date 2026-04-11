@@ -299,3 +299,182 @@ See `SECURITY.md` for full security practices. Key points:
 ---
 
 This architecture covers the Ghost Architect system from text fine-tuning through vision training and local GGUF deployment.
+
+---
+
+## 7. Deployment Architecture (Current)
+
+### Streamlit Web Application
+
+**File:** `src/app.py` (production app)
+
+**Architecture:**
+```
+User Browser
+     ↓
+Streamlit Web Server (port 8501)
+     ├─ File Upload Handler
+     ├─ Image Preprocessing
+     ├─ Model Inference Pipeline
+     ├─ Schema Consolidation
+     └─ Visualization Engine
+          ├─ Mermaid ER Diagram Generator
+          ├─ PostgreSQL SQL Generator
+          └─ HTML Rendering
+```
+
+**Key Features:**
+1. **Multi-Image Upload** — Handle 3-6 related screenshots
+2. **Per-Image Analysis** — Individual inference for each image
+3. **Schema Consolidation** — Merge schemas using LLM-based conflict resolution
+4. **Mermaid Visualization** — Beautiful ER diagrams with soft blue theme
+5. **PostgreSQL Export** — Copy-paste ready SQL code
+
+**Model Loading:**
+```python
+# Default adapter path (configurable in sidebar)
+adapter_path = "output/adapters/trinity_kaggle"
+
+# Auto-loads from HF Hub if needed
+model = AutoPeftModelForCausalLM.from_pretrained(adapter_path)
+processor = AutoProcessor.from_pretrained(adapter_path)
+```
+
+### Mermaid ER Visualization
+
+**File:** `src/app.py` function `build_mermaid_html()`
+
+**Features:**
+- Self-contained HTML (no external CDN required)
+- Card-based table rendering (32px shell padding, 48x56 grid gaps)
+- Collision-aware relationship labels
+- Soft blue color scheme (#f8fafc, #eef2ff, #2563eb)
+- Collapsible sections for source and SQL statements
+- Interactive zoom/pan (Mermaid-native)
+
+**Example Output:**
+```mermaid
+erDiagram
+    CUSTOMERS ||--o{ ORDERS : places
+    ORDERS ||--o{ ORDER_ITEMS : contains
+    CUSTOMERS {
+        int id PK
+        string email UK
+        string name
+        timestamp created_at
+    }
+    ORDERS {
+        int id PK
+        int customer_id FK
+        decimal total_amount
+        string status
+        timestamp created_at
+    }
+    ORDER_ITEMS {
+        int id PK
+        int order_id FK
+        int product_id FK
+        int quantity
+        decimal unit_price
+    }
+```
+
+### Deployment Paths
+
+**Current (Production):**
+```
+Streamlit + Adapter Weights
+├─ No GGUF export needed
+├─ Direct inference from LoRA adapter
+├─ Model loaded on-demand (stays resident)
+└─ Best for: Local/demo deployment
+```
+
+**Future (Optional):**
+```
+GGUF + Ollama (if needed)
+├─ Export: python src/export.py
+├─ Ollama integration: ollama create ghost-architect
+└─ Best for: Offline inference, model sharing
+```
+
+---
+
+## 8. Data Flow: UI Screenshot to PostgreSQL Schema
+
+### Complete Inference Pipeline
+
+```
+1. User uploads 3-6 UI screenshots
+   ├─ Validate file format (PNG, JPG)
+   ├─ Check file size (<10MB per image)
+   └─ Store in temporary cache
+
+2. For each image:
+   ├─ Preprocess
+   │  ├─ Resize to standard dimensions
+   │  ├─ Normalize pixel values
+   │  └─ Apply vision processor transforms
+   │
+   ├─ Vision Encoding
+   │  ├─ Pass through Gemma-3 vision encoder
+   │  ├─ Extract visual features
+   │  └─ Generate embedding (high-dim vector)
+   │
+   ├─ LLM Generation
+   │  ├─ Combine embedding + prompt
+   │  ├─ Pass through attention layers
+   │  ├─ Generate SQL tokens auto-regressively
+   │  └─ Decode to complete SQL statement
+   │
+   └─ Schema Extraction
+      ├─ Parse CREATE TABLE statements
+      ├─ Extract columns, types, constraints
+      ├─ Identify foreign keys and relationships
+      └─ Store in intermediate schema
+
+3. Multi-Image Consolidation
+   ├─ Collect all per-image schemas
+   ├─ Detect conflicts/overlaps
+   ├─ Use LLM to resolve contradictions
+   ├─ Merge relationships across images
+   └─ Output: Unified consolidated schema
+
+4. Visualization
+   ├─ Generate Mermaid ER diagram
+   ├─ Generate PostgreSQL code
+   ├─ Generate HTML with embedded CSS/JS
+   └─ Render in browser
+
+5. User Output
+   ├─ Beautiful ER diagram (interactive)
+   ├─ Copy-paste ready SQL
+   ├─ Collapsible source views
+   └─ Option to download/share
+```
+
+### Performance Characteristics
+
+| Stage | Time | Memory | GPU |
+|-------|------|--------|-----|
+| Model loading (first run) | 60-90s | 8-10 GB | Yes |
+| Per-image inference | 5-15s | 8-10 GB | Yes |
+| Multi-image consolidation | 10-30s | 2-4 GB | Optional |
+| Visualization generation | <1s | <500 MB | No |
+| Total (3 images) | ~30-60s | 8-10 GB | Yes |
+
+---
+
+## 9. Production Readiness
+
+- [x] Model trained on Kaggle RTX Pro 6000
+- [x] Inference pipeline implemented and tested
+- [x] Streamlit app deployed and functional
+- [x] Mermaid visualization integrated
+- [x] PostgreSQL code generation working
+- [x] Multi-image consolidation implemented
+- [x] Error handling and validation in place
+- [x] Documentation complete
+- [ ] Docker containerization (future)
+- [ ] Cloud deployment (future)
+- [ ] API layer (out of scope)

@@ -10,22 +10,22 @@ The pipeline goes: **train → test → export GGUF + Modelfile → run with Oll
 
 ## Trinity Architecture
 
-The training stack combines three methods for high-quality under tight VRAM limits:
+The training stack combines three methods for optimal fine-tuning on consumer GPUs:
 
-1. **QLoRA (4-bit NF4 quantization)** — Compresses model weights so Gemma-3-12B fits on consumer GPUs.
+1. **QLoRA (4-bit NF4 quantization)** — Compresses model weights so Gemma-3-12B fits on 16GB GPU.
 2. **rsLoRA (rank-stabilized scaling)** — Stabilizes high-rank adaptation and enables rank 64.
 3. **DoRA (weight decomposition)** — Improves update precision by separating magnitude and direction.
 
-### Two Training Paths
-
-| | **Modal A10G** (`src/modal_train.py`) | **Colab T4** (`src/train_vision.py`) |
-|---|---|---|
-| **Trinity** | Full: QLoRA + DoRA + rsLoRA | QLoRA + rsLoRA only (no DoRA) |
-| **Vision layers** | `finetune_vision_layers=True` | `finetune_vision_layers=False` |
-| **Epochs / Context** | 3 epochs, 4096 ctx | 1 epoch, 2048 ctx |
-| **Cost** | ~$1.65 (from free $30 credits) | Free |
-
-> **DoRA bug on T4:** PEFT's `dora.py` passes fp16 `x_eye` to fp32 `lora_A` without casting. Unsloth's Gemma3 temporary fp16 patch triggers this. `modal_train.py` includes an inline monkey-patch; the Colab path simply disables DoRA.
+### Current Implementation (Kaggle RTX Pro 6000)
+The Kaggle-trained model used full Trinity: QLoRA + DoRA + rsLoRA with:
+- **Model:** Unsloth-optimized Gemma-3-12B vision
+- **Sequence length:** 2048–4096 context
+- **LoRA rank:** 64, **alpha:** 32
+- **Target modules:** q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj
+- **Batch size:** 1, **Gradient accumulation:** 4
+- **Learning rate:** 2e-4, **Optimizer:** adamw_8bit
+- **Training data:** 5,287 UI-SQL pairs
+- **GPU:** RTX Pro 6000 (95GB VRAM available)
 
 ### Default Config (`configs/training_config.yaml`)
 - **Model:** `unsloth/gemma-3-12b-it-bnb-4bit`
@@ -50,22 +50,18 @@ Apply in order if CUDA OOM occurs:
 uv venv .venv
 source .venv/bin/activate
 uv pip install -r requirements.txt
-make help
 ```
 
-### 2) Colab T4 (free vision training)
-Use **` notebooks/main.ipynb`** — single notebook for runtime checks, dependency install, config, training, and GGUF export.
-
-> CUDA-specific training dependencies (Unsloth/xformers) are installed inside the Colab notebook cells.
-
-### 3) Modal A10G (full Trinity vision training)
+### 2) Run Streamlit app (current workflow)
 ```bash
-modal run src/modal_train.py
+cd /home/harshil/ghost_architect_gemma3
+uv run python -m streamlit run src/app.py
+# Browser opens at http://localhost:8501
+# Upload 3-6 UI screenshots → see Mermaid ER diagram + PostgreSQL code
 ```
 
-### 4) Interactive demo
+### 3) Interactive demo (CLI)
 ```bash
-streamlit run src/app.py          # Upload 3-6 related screenshots → consolidated schema
 python src/inference.py            # CLI testing with rich output
 ```
 
@@ -82,30 +78,41 @@ python src/inference.py            # CLI testing with rich output
 ```bash
 make venv           # create .venv
 make install        # install dependencies with uv
-make validate       # environment/GPU validation
-make dataset-check  # validate data/dataset.json
-make train          # run src/train.py with config + dataset
-make export         # run src/export.py (GGUF export + Ollama Modelfile)
-make test           # run pytest
 make clean          # remove Python cache files
 ```
 
+> Note: Training targets (`make train`, `make export`) are reference only. The production model is pre-trained and stored in `output/adapters/trinity_kaggle/`.
+
 ## Dataset
 
-### Phase 1 (text)
-`data/dataset.json` — JSON array of instruction-tuning examples:
+### Current Training Data (Phase 2 Vision)
+`data/dataset_merged.json` — **5,287 UI-SQL pairs**:
+- **287 real** — actual UI screenshots from various web applications
+- **5,000 synthetic** — generated via Gemini API for additional diversity
+
+This dataset is **fixed and finalized**. Model has been trained on Kaggle RTX Pro 6000 and is ready for production use.
+
+### Format
+Vision training examples use this message format:
 ```json
-[
-  {
-    "instruction": "Task description",
-    "input": "Optional context",
-    "output": "Expected response"
-  }
-]
+{
+  "messages": [
+    {"role": "user", "content": [
+      {"type": "image", "image": "data/ui_screenshots/example.png", "text": ""},
+      {"type": "text", "text": "Analyze this UI and generate the database schema."}
+    ]},
+    {"role": "assistant", "content": "CREATE TABLE products (...)"}
+  ]
+}
 ```
 
-### Phase 2 (vision)
-`data/dataset_vision.json` — 287 vision training examples. Image paths are embedded in messages as `{"type": "image", "image": "<path>", "text": ""}` (no top-level `images` column).
+### Data Directory
+```
+data/
+├── dataset_merged.json              # 5,287 training examples (finalized)
+├── ui_screenshots/                  # 287 real UI screenshots (107MB)
+├── synthetic_pairs/                 # (reference, not used in current pipeline)
+└── validation_set/                  # (reference, reserved for future)
 
 ## Project Tree
 ```text
@@ -150,20 +157,20 @@ ghost_architect_gemma3/
 ```
 
 ## Documentation Map
-- `docs/plan.md` — execution phases and implementation sequence
-- `docs/learning-guide.md` — conceptual deep dive and training intuition
-- `docs/architecture.md` — system architecture
-- `docs/phase1_trinity_training.md` — Phase 1 readiness checklist
-- `docs/phase2_vision_training.md` — Phase 2 vision training guide
-- `docs/phase3_deployment.md` — deployment via GGUF/Ollama + Streamlit
-- `docs/prd.md` — product boundaries and requirements
-- `docs/ai_rules.md` — quality and development guardrails
+- `docs/QUICKSTART.md` — Get up and running in 5 minutes
+- `docs/DEPLOYMENT_GUIDE.md` — Current production setup and model loading
+- `docs/MODEL_TRAINING_SUMMARY.md` — What actually trained (Kaggle path, not Modal)
+- `docs/plan.md` — Original implementation plan vs actual execution
+- `docs/learning-guide.md` — Deep dive into Trinity architecture and fine-tuning theory
+- `docs/architecture.md` — Complete system architecture and design
+- `docs/prd.md` — Product boundaries and requirements
+- `docs/ai_rules.md` — Development quality guardrails
 
 ## Current Status
-- **Phase 1** (text fine-tuning): Complete. `src/train.py` + `configs/training_config.yaml` + 30-example starter dataset.
-- **Phase 2** (vision training): Built. Two training scripts (`src/modal_train.py` for Modal A10G, `src/train_vision.py` for Colab T4), 287-example vision dataset, Streamlit demo app, CLI inference.
-- **Export**: `src/export.py` converts adapters to GGUF for Ollama and writes `output/gguf/Modelfile`.
-- **No API layer** — project scope is train → test → export GGUF → run locally.
+- **Phase 1** (text fine-tuning): Skipped. Project proceeded directly to multimodal vision training.
+- **Phase 2** (vision training): **Complete**. Model trained on Kaggle RTX Pro 6000 with 5,287 UI-SQL pairs (287 real + 5,000 synthetic). Trained adapter exported to `output/adapters/trinity_kaggle/`.
+- **Phase 3** (deployment): **Complete**. Streamlit app (`src/app.py`) running with beautiful Mermaid ER visualization. Model loads directly from adapter weights (no GGUF export required).
+- **Production ready**: Upload UI screenshots → consolidated schema generation → Mermaid diagram + PostgreSQL code.
 
 ## License
 MIT (see `LICENSE.md`).
