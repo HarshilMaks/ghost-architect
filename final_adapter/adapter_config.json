@@ -7,7 +7,7 @@
     "parent_library": "transformers.models.gemma3.modeling_gemma3",
     "unsloth_fixed": true
   },
-  "base_model_name_or_path": "/kaggle/input/datasets/harshilmaks/gemma-3-model-offline/gemma3_model",
+  "base_model_name_or_path": "/home/harshil/ghost_architect_gemma3/output/gemma3_model",
   "bias": "none",
   "corda_config": null,
   "ensure_weight_tying": false,

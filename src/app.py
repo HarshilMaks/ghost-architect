@@ -46,10 +46,10 @@ with st.sidebar:
 
     adapter_dir = st.text_input(
         "Adapter path",
-        value="output/adapters/trinity_a10g",
+        value="final_adapter",
         help="Path to your trained LoRA adapter directory",
     )
-    st.caption("Change this to `output/adapters/phase2` if you trained on Colab.")
+    st.caption("Change this to `output/adapters/trinity_kaggle` or any other adapter path.")
     st.divider()
     st.markdown("**How it works**")
     st.markdown(
@@ -622,12 +622,28 @@ def render_schema_cards(tables: list[dict]):
 # ── Model loader (cached — loads once, reused across uploads) ─────────────────
 @st.cache_resource(show_spinner=False)
 def load_model(adapter_path: str):
-    from unsloth import FastVisionModel
-    model, processor = FastVisionModel.from_pretrained(
-        model_name=adapter_path,
-        load_in_4bit=True,
+    from transformers import AutoModelForCausalLM, AutoProcessor
+    from peft import PeftModel
+    import torch
+    
+    base_model_path = "output/gemma3_model"
+    
+    # Load base model with 8-bit quantization (lighter than 4-bit)
+    model = AutoModelForCausalLM.from_pretrained(
+        base_model_path,
+        device_map="auto",
+        load_in_8bit=True,
+        llm_int8_enable_fp32_cpu_offload=True,
+        trust_remote_code=True,
     )
-    FastVisionModel.for_inference(model)
+    
+    # Load adapter
+    model = PeftModel.from_pretrained(model, adapter_path)
+    model.eval()
+    
+    # Load processor
+    processor = AutoProcessor.from_pretrained(base_model_path, trust_remote_code=True)
+    
     return model, processor
 
 
