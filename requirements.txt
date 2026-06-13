@@ -1,34 +1,6 @@
-# Core dependencies for Trinity architecture
-torch>=2.1.0
-torchvision>=0.16.0
-transformers>=4.38.0
-accelerate>=0.25.0
-bitsandbytes>=0.41.0
-peft>=0.7.0
-trl>=0.7.0
-
-unsloth[colab-new] @ git+https://github.com/unslothai/unsloth.git
-xformers>=0.0.26
-
-# Data processing and utilities
-numpy>=1.24.0
-datasets>=2.14.0
-scipy>=1.10.0
-tqdm>=4.65.0
-
-# Environment and API management
-python-dotenv>=1.0.0
-
-# Additional utilities for Phase 2 (Ghost Architect)
-pillow>=10.0.0
-sqlparse>=0.4.4
-rich>=13.0.0
-streamlit>=1.32.0
-google-generativeai>=0.3.0
-
-# Data Factory dependencies (synthetic data generation)
-playwright>=1.40.0
-jinja2>=3.1.0
-
-# Test dependencies
+streamlit>=1.35.0
+Pillow>=10.0.0
+google-genai>=1.0.0
+requests>=2.31.0
 pytest>=8.0.0
+toml>=0.10.2

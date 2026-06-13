@@ -1,58 +1,38 @@
-#!/usr/bin/env python3
-"""Test model inference with a dummy image."""
+"""
+test_inference.py — Tests the Gemini API inference pipeline.
+Run: python scripts/test_inference.py
+Requires: GEMINI_API_KEY set in .streamlit/secrets.toml
+"""
 
 import sys
-sys.path.insert(0, 'src')
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-print("🧪 Testing Model Inference (CLI)\n")
+from google import genai
+import PIL.Image
+import toml
 
-print("📦 Loading model and processor...")
-from app import load_model, load_processor
-model = load_model()
-processor = load_processor()
-print("✓ Model loaded successfully!\n")
+secrets = toml.load(".streamlit/secrets.toml")
+client = genai.Client(api_key=secrets["GEMINI_API_KEY"])
 
-print("🖼️ Creating test image...")
-from PIL import Image
-import torch
-test_image = Image.new('RGB', (448, 448), color='blue')
-print(f"✓ Test image created: {test_image.size}\n")
-
-print("⚙️ Preprocessing image...")
-processed = processor(
-    images=test_image,
-    text="Analyze this UI and generate a database schema.",
-    return_tensors="pt"
-)
-print(f"✓ Image preprocessed")
-print(f"  - pixel_values shape: {processed['pixel_values'].shape}")
-print(f"  - input_ids shape: {processed['input_ids'].shape}\n")
-
-print("🧠 Running model inference...")
-print("   (This takes 10-15 seconds)...\n")
-with torch.no_grad():
-    outputs = model.generate(
-        **processed,
-        max_length=512,
-        temperature=0.7,
-        top_p=0.9
+def test_gemini_text():
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents="Say 'Ghost Architect is working.' and nothing else.",
     )
-print("✓ Inference completed!\n")
+    assert "Ghost Architect is working" in response.text
+    print("✓ Gemini text generation works")
 
-print("📝 Decoding output to SQL...")
-from transformers import AutoTokenizer
-tokenizer = AutoTokenizer.from_pretrained("output/adapters/trinity_kaggle")
-sql = tokenizer.decode(outputs[0], skip_special_tokens=True)
-print("✓ SQL generated!\n")
+def test_gemini_vision_with_test_image():
+    img = PIL.Image.new("RGB", (100, 100), color=(100, 150, 200))
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=["Describe this image in one sentence.", img],
+    )
+    assert response.text
+    print(f"✓ Gemini vision works: {response.text[:80]}")
 
-print("🎯 Generated Schema (first 500 characters):")
-print("─" * 70)
-print(sql[:500])
-print("─" * 70)
-print()
-
-# Check if it looks like SQL
-if "CREATE TABLE" in sql or "CREATE" in sql:
-    print("✅ Inference test PASSED - Generated valid SQL!")
-else:
-    print("⚠️ Output doesn't look like SQL - check model output")
+if __name__ == "__main__":
+    test_gemini_text()
+    test_gemini_vision_with_test_image()
+    print("\n✓ All tests passed. App is ready to deploy.")

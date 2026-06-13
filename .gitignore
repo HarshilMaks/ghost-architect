@@ -40,6 +40,9 @@ plan.md
 .env.local
 .env.*.local
 
+# Streamlit secrets (contains API keys)
+.streamlit/secrets.toml
+
 # Cache
 __pycache__/
 *.pyc
