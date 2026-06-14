@@ -654,29 +654,28 @@ st.markdown("""
 with st.container(border=True):
     st.markdown(
         '<h1 style="text-align:center;font-size:2.5rem;font-weight:800;'
-        'margin:0;color:#E2E8F0;">👻 Ghost Architect</h1>',
+        'margin:0;padding:0.5rem 0 0;color:#E2E8F0;">👻 Ghost Architect</h1>',
         unsafe_allow_html=True,
     )
     st.markdown(
-        '<p style="text-align:center;color:#8A8A9E;margin:0.25rem 0 1rem;">'
-        'Upload UI screenshots → Production-ready database schema + ER Diagram</p>',
+        '<p style="text-align:center;color:#8A8A9E;margin:0 0 1.25rem;font-size:0.95rem;">'
+        'Upload UI screenshots \u2192 Production-ready PostgreSQL Schema + ER Diagram</p>',
         unsafe_allow_html=True,
     )
-    cols = st.columns(4, gap="small")
-    badge_items = [
-        ("Gemini API", True),
-        ("No GPU", False),
-        ("Free tier", False),
-        ("Multi-image", False),
+    badge_cols = st.columns(4, gap="small")
+    badge_data = [
+        ("\u2726", "Gemini API"),
+        ("\u26A1", "No GPU"),
+        ("\uD83C\uDFAF", "Free tier"),
+        ("\uD83D\uDCF7", "Multi-image"),
     ]
-    for col, (text, dot) in zip(cols, badge_items):
+    for col, (icon, label) in zip(badge_cols, badge_data):
         with col:
-            dot_html = '<span style="width:6px;height:6px;border-radius:50%;background:#3b82f6;display:inline-block;"></span>' if dot else ""
             st.markdown(
-                f'<p style="text-align:center;font-size:0.75rem;color:#8A8A9E;'
-                f'margin:0;padding:0.25rem 0.5rem;border:1px solid #252533;'
-                f'border-radius:999px;background:#111118;">'
-                f'{dot_html}{" " if dot_html else ""}{text}</p>',
+                f'<p style="text-align:center;font-size:0.8rem;color:#CBD5E1;'
+                f'margin:0;padding:0.4rem 0.3rem;border:1px solid #2A2A3A;'
+                f'border-radius:999px;background:#151520;">'
+                f'{icon} {label}</p>',
                 unsafe_allow_html=True,
             )
 
@@ -696,12 +695,12 @@ with col_upload:
     if uploaded_files:
         count = len(uploaded_files)
         if count >= MIN_REQUIRED_IMAGES:
-            facade.Alert(f"{count} screenshots uploaded", variant="success")
+            st.success(f"{count} screenshots uploaded")
         else:
-            facade.Alert(f"Need at least {MIN_REQUIRED_IMAGES} screenshots ({count} uploaded)", variant="warning")
+            st.warning(f"Need at least {MIN_REQUIRED_IMAGES} screenshots ({count} uploaded)")
 
         if count > MAX_RECOMMENDED_IMAGES:
-            facade.Alert(f"{MAX_RECOMMENDED_IMAGES} screenshots is the sweet spot. You can continue with {count}.", variant="info")
+            st.info(f"{MAX_RECOMMENDED_IMAGES} screenshots is the sweet spot. You can continue with {count}.")
 
         rows = (count + 2) // 3
         for row in range(rows):
@@ -718,17 +717,17 @@ with col_schema:
     st.markdown(f'<p style="font-size:1.1rem;font-weight:700;color:#E2E8F0;margin-bottom:1rem;"><span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:8px;background:#2563eb;color:white;font-size:0.75rem;font-weight:700;margin-right:0.5rem;">2</span> Generated Schema</p>', unsafe_allow_html=True)
 
     if not uploaded_files:
-        facade.Alert("Upload screenshots on the left to generate a schema", variant="info")
+        st.info("Upload screenshots on the left to generate a schema", icon="📸")
     elif len(uploaded_files) < MIN_REQUIRED_IMAGES:
-        facade.Alert(f"Upload {MIN_REQUIRED_IMAGES - len(uploaded_files)} more screenshot{'s' if MIN_REQUIRED_IMAGES - len(uploaded_files) != 1 else ''} for precise schema generation", variant="info")
+        st.info(f"Upload {MIN_REQUIRED_IMAGES - len(uploaded_files)} more screenshot{'s' if MIN_REQUIRED_IMAGES - len(uploaded_files) != 1 else ''} for precise schema generation", icon="📸")
     else:
-        generate_btn = facade.Button("Generate Schema", variant="default", size="lg", icon="sparkle", key="generate_btn")
+        generate_btn = st.button("Generate Schema", type="primary", use_container_width=True, key="generate_btn")
 
         if generate_btn:
             if "request_count" not in st.session_state:
                 st.session_state.request_count = 0
             if st.session_state.request_count >= 3:
-                facade.Alert("You've used 3 free analyses this session. Refresh to continue.", variant="warning")
+                st.warning("You've used 3 free analyses this session. Refresh to continue.")
                 st.stop()
 
             pil_images = []
@@ -747,15 +746,15 @@ with col_schema:
             except Exception as e:
                 err_str = str(e)
                 if "denied access" in err_str or "PERMISSION_DENIED" in err_str:
-                    facade.Alert(f"Google Cloud project denied access. Get a new API key from a different project at https://aistudio.google.com.\n\nError: {err_str[:200]}", variant="error", title="Access denied")
+                    st.error(f"Google Cloud project denied access. Get a new API key from a different project at https://aistudio.google.com.\n\n{err_str[:200]}")
                 elif "API_KEY_INVALID" in err_str or "UNAUTHENTICATED" in err_str:
-                    facade.Alert("Gemini API key is invalid or expired. Get a new one at https://aistudio.google.com.", variant="error", title="Key invalid")
+                    st.error("Gemini API key is invalid or expired. Get a new one at https://aistudio.google.com.")
                 elif "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
-                    facade.Alert("API rate limit reached. Wait a moment and try again.", variant="warning", title="Rate limited")
+                    st.warning("API rate limit reached. Wait a moment and try again.")
                 elif "503" in err_str or "UNAVAILABLE" in err_str:
-                    facade.Alert("Gemini service is temporarily unavailable. Try again in a few seconds.", variant="error", title="Service unavailable")
+                    st.error("Gemini service is temporarily unavailable. Try again in a few seconds.")
                 else:
-                    facade.Alert(f"Analysis failed: {err_str}", variant="error")
+                    st.error(f"Analysis failed: {err_str}")
                 status_ph.empty()
                 st.stop()
 
@@ -770,7 +769,7 @@ with col_schema:
                 with st.container(border=True):
                     st.markdown(f'<p style="color:#8A8A9E;font-size:0.85rem;margin:0;"><strong style="color:#E2E8F0;">Design decisions:</strong> {parsed["explanation"]}</p>', unsafe_allow_html=True)
 
-            tab_vis, tab_sql = facade.Tabs(["ER Diagram", "SQL Schema"])
+            tab_vis, tab_sql = st.tabs(["ER Diagram", "SQL Schema"])
 
             with tab_vis:
                 if parsed["mermaid"]:
@@ -781,7 +780,7 @@ with col_schema:
                         parsed_tables = parse_create_tables(parsed["sql"])
                         if parsed_tables:
                             render_schema_cards(parsed_tables)
-                    facade.Alert("Mermaid diagram not available. Showing SQL below.", variant="info")
+                    st.info("Mermaid diagram not available. Showing SQL below.")
 
             with tab_sql:
                 if parsed["sql"]:
@@ -790,7 +789,7 @@ with col_schema:
                     st.code(raw_output, language="text")
 
             if parsed["sql"] or parsed["mermaid"]:
-                facade.Separator()
+                st.divider()
                 dl_col1, dl_col2, dl_col3 = st.columns(3)
                 if parsed["sql"]:
                     dl_col1.download_button("Download SQL", data=parsed["sql"], file_name="ghost_architect_schema.sql", mime="text/plain", use_container_width=True)
