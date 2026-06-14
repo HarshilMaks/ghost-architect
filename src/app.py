@@ -118,8 +118,34 @@ def analyze_screenshots(pil_images: list, dialect: str = "PostgreSQL") -> tuple[
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("**Ghost Architect**")
-    st.caption("UI → Database Schema")
+    st.markdown(
+        '<p style="font-size:1.2rem;font-weight:700;color:#E2E8F0;margin:0 0 0.1rem;">'
+        '👻 Ghost Architect</p>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<p style="font-size:0.8rem;color:#6B6B80;margin:0 0 1rem;">'
+        'UI Screenshots \u2192 Database Schema</p>',
+        unsafe_allow_html=True,
+    )
+
+    st.divider()
+
+    st.markdown(
+        '<p style="font-size:0.85rem;font-weight:600;color:#CBD5E1;margin:0 0 0.5rem;">'
+        'How it works</p>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<p style="font-size:0.8rem;color:#8A8A9E;line-height:1.6;margin:0;">'
+        '1. Upload 3\u20136 UI screenshots (list view, form, detail)<br>'
+        '2. Select your target SQL dialect<br>'
+        '3. Click Generate Schema<br>'
+        '4. Review ER diagram, SQL, and download</p>',
+        unsafe_allow_html=True,
+    )
+    st.caption("3 analyses per session \u00b7 No GPU required")
+
     st.divider()
 
     dialect = st.selectbox(
@@ -128,14 +154,6 @@ with st.sidebar:
         index=0,
         help="Changes the SQL syntax and data types in the generated schema."
     )
-
-    st.markdown("**How it works**")
-    st.markdown(
-        "1. Upload 3–6 UI screenshots from the same web app\n"
-        "2. Include list view, form, and detail screens\n"
-        "3. Click Generate Schema → get SQL + ER diagram"
-    )
-    st.caption("3 analyses per session · No GPU required")
 
     st.divider()
     with st.expander("🔑 Use your own API key"):
