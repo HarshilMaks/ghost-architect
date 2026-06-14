@@ -723,7 +723,7 @@ with col_schema:
 
 # ── Generate button (full width) ──────────────────────────────────────────────
 if uploaded_files and len(uploaded_files) >= MIN_REQUIRED_IMAGES:
-    generate_btn = st.button("\u2728 Generate Schema", type="primary", use_container_width=True, key="generate_btn")
+    generate_btn = st.button("\u2726 Generate Schema", type="primary", use_container_width=True, key="generate_btn")
 
     if generate_btn:
         if "request_count" not in st.session_state:
