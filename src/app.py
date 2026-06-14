@@ -813,8 +813,7 @@ if st.session_state.get("last_sql") or st.session_state.get("last_mermaid"):
 st.markdown("""
 <div class="ghost-footer">
     <div class="links">
-        <a href="https://github.com/HarshilMaks/ghost_architect_gemma3" target="_blank">GitHub</a>
-        <a href="https://huggingface.co/harshilmaks/ghost-architect-gemma3-adapter" target="_blank">HuggingFace Model</a>
+        <a href="https://github.com/HarshilMaks/ghost-architect" target="_blank">GitHub</a>
         <a href="https://aistudio.google.com" target="_blank">Gemini API</a>
     </div>
     <p>Ghost Architect · Gemini API · MIT</p>
