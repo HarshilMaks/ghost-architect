@@ -129,10 +129,13 @@ with st.sidebar:
         help="Changes the SQL syntax and data types in the generated schema."
     )
 
-    st.info(
-        "3 analyses per session. Refresh to reset. "
-        "No GPU required — multi-model Gemini API."
+    st.markdown("**How it works**")
+    st.markdown(
+        "1. Upload 3–6 UI screenshots\n"
+        "2. Click Generate Schema\n"
+        "3. Get SQL + ER diagram"
     )
+    st.caption("3 analyses per session · No GPU needed")
 
     st.divider()
     with st.expander("🔑 Use your own API key"):
@@ -652,13 +655,22 @@ with st.container(border=True):
     st.markdown('<h1 style="text-align:center;font-size:2.5rem;font-weight:800;margin:0;color:var(--foreground);">👻 Ghost Architect</h1>', unsafe_allow_html=True)
     st.markdown('<p style="text-align:center;color:var(--muted-foreground);margin:0.25rem 0 1rem;">Upload UI screenshots → Production-ready database schema + ER Diagram</p>', unsafe_allow_html=True)
     cols = st.columns(4, gap="small")
-    badge_info = [("Gemini API", True), ("No GPU needed", False), ("Free tier", False), ("Multi-image", False)]
-    for col, (text, dot) in zip(cols, badge_info):
+    badge_items = [
+        ("Gemini API", True),
+        ("No GPU", False),
+        ("Free tier", False),
+        ("Multi-image", False),
+    ]
+    for col, (text, dot) in zip(cols, badge_items):
         with col:
-            if dot:
-                st.markdown(f'<div style="text-align:center;"><span style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.25rem 0.75rem;background:var(--muted);border:1px solid var(--border);border-radius:999px;color:var(--muted-foreground);font-size:0.75rem;font-weight:500;"><span style="width:6px;height:6px;border-radius:50%;background:#3b82f6;display:inline-block;animation:pulse 2s infinite;"></span>{text}</span></div>', unsafe_allow_html=True)
-            else:
-                st.markdown(f'<div style="text-align:center;"><span style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.25rem 0.75rem;background:var(--muted);border:1px solid var(--border);border-radius:999px;color:var(--muted-foreground);font-size:0.75rem;font-weight:500;">{text}</span></div>', unsafe_allow_html=True)
+            dot_html = '<span style="width:6px;height:6px;border-radius:50%;background:#3b82f6;display:inline-block;"></span> ' if dot else ""
+            st.markdown(
+                f'<p style="text-align:center;font-size:0.75rem;color:#8A8A9E;'
+                f'margin:0;padding:0.25rem 0.5rem;border:1px solid #252533;'
+                f'border-radius:999px;background:#111118;">'
+                f'{dot_html}{text}</p>',
+                unsafe_allow_html=True,
+            )
 
 # ── Main layout ────────────────────────────────────────────────────────────────
 col_upload, col_schema = st.columns([1, 1], gap="large")
