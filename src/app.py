@@ -119,20 +119,28 @@ def analyze_screenshots(pil_images: list, dialect: str = "PostgreSQL") -> tuple[
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown(
-        '<p style="font-size:1rem;font-weight:600;color:#CBD5E1;margin:0 0 0.5rem;">'
+        '<p style="font-size:1rem;font-weight:600;color:#E2E8F0;margin:0 0 0.75rem;">'
         'How it works</p>',
         unsafe_allow_html=True,
     )
+    steps = [
+        ("1", "Upload 3\u20136 UI screenshots (list, form, detail)"),
+        ("2", "Choose your SQL dialect"),
+        ("3", "Click Generate Schema"),
+        ("4", "Review ER diagram + SQL"),
+    ]
+    for num, text in steps:
+        st.markdown(
+            f'<div style="display:flex;align-items:flex-start;gap:0.5rem;margin-bottom:0.5rem;">'
+            f'<span style="background:#1a1a24;color:#3B82F6;font-size:0.7rem;font-weight:700;'
+            f'width:1.3rem;height:1.3rem;border-radius:4px;display:flex;align-items:center;'
+            f'justify-content:center;flex-shrink:0;margin-top:1px;">{num}</span>'
+            f'<span style="font-size:0.9rem;color:#8A8A9E;line-height:1.4;">{text}</span>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
     st.markdown(
-        '<p style="font-size:0.95rem;color:#8A8A9E;line-height:1.7;margin:0;">'
-        '1. Upload 3\u20136 UI screenshots (list, form, detail)<br>'
-        '2. Choose your SQL dialect<br>'
-        '3. Click Generate Schema<br>'
-        '4. Review ER diagram + SQL</p>',
-        unsafe_allow_html=True,
-    )
-    st.markdown(
-        '<p style="font-size:0.85rem;color:#6B6B80;margin:0.5rem 0 0;">'
+        '<p style="font-size:0.8rem;color:#6B6B80;margin:0.25rem 0 0;">'
         '3 analyses per session \u00b7 No GPU required</p>',
         unsafe_allow_html=True,
     )
@@ -147,7 +155,7 @@ with st.sidebar:
     )
 
     st.divider()
-    with st.expander("🔑 Use your own API key"):
+    with st.expander("\u26bf Use your own API key"):
         st.caption("If the admin key is expired or unavailable, paste your own Gemini API key here.")
         user_key = st.text_input(
             "Gemini API Key",
@@ -601,12 +609,12 @@ def render_schema_cards(tables: list[dict]):
                     f"""
                     <div style="
                         background:#1e1e2e;
-                        border:1px solid #7c3aed;
+                        border:1px solid #3B82F6;
                         border-radius:8px;
                         padding:12px;
                         margin-bottom:12px;
                     ">
-                    <h4 style="color:#a78bfa;margin:0 0 8px 0;">📋 {table['name']}</h4>
+                    <h4 style="color:#60a5fa;margin:0 0 8px 0;">\u25a4 {table['name']}</h4>
                     """,
                     unsafe_allow_html=True,
                 )
@@ -616,13 +624,13 @@ def render_schema_cards(tables: list[dict]):
                     cstr  = col_def["constraints"].upper()
 
                     if "PRIMARY KEY" in cstr:
-                        icon, color = "🔑", "#fbbf24"
+                        icon, color = "\u26bf", "#fbbf24"
                     elif "REFERENCES" in cstr or "FOREIGN" in cstr:
-                        icon, color = "🔗", "#60a5fa"
+                        icon, color = "\u279c", "#60a5fa"
                     elif "NOT NULL" in cstr:
-                        icon, color = "●", "#34d399"
+                        icon, color = "\u25cf", "#34d399"
                     else:
-                        icon, color = "○", "#9ca3af"
+                        icon, color = "\u25cb", "#9ca3af"
 
                     st.markdown(
                         f"<p style='margin:2px 0;font-size:13px;'>"
@@ -640,41 +648,45 @@ def render_schema_cards(tables: list[dict]):
 st.markdown("""
 <style>
     .stApp { background: #0a0a0f; }
-    .block-container { max-width: 1400px; }
-    .upload-empty { text-align: center; padding: 2rem 1rem; border: 2px dashed #252533; border-radius: 12px; color: #4a4a5e; font-size: 1rem; }
+    .block-container { max-width: 1100px; padding: 1.5rem 1rem !important; }
+    .upload-empty { text-align: center; padding: 1.5rem 1rem; border: 2px dashed #252533; border-radius: 12px; color: #4a4a5e; font-size: 1rem; }
     [data-testid="stFileUploader"] { border: 2px dashed #252533; border-radius: 12px; padding: 0.5rem; transition: all 0.2s; }
     [data-testid="stFileUploader"]:hover { border-color: #3b82f6; }
     [data-testid="stFileUploader"] [data-testid="stMarkdownContainer"] p { font-size: 1rem; color: #6b6b80; }
     [data-testid="stCode"] { border-radius: 12px !important; border: 1px solid #252533 !important; }
     [data-testid="stCode"] pre { background: #0d0d14 !important; }
-    .ghost-footer { text-align: center; padding: 2.5rem 1rem 1rem; margin-top: 3rem; border-top: 1px solid #1a1a24; color: #4a4a5e; font-size: 0.85rem; }
+    .ghost-footer { text-align: center; padding: 1.5rem 1rem 0.75rem; margin-top: 2rem; border-top: 1px solid #1a1a24; color: #4a4a5e; font-size: 0.8rem; }
     .ghost-footer a { color: #6b6b80; text-decoration: none; transition: color 0.2s; }
     .ghost-footer a:hover { color: #a0a0b5; }
-    .ghost-footer .links { display: flex; justify-content: center; gap: 1.5rem; margin-bottom: 0.75rem; flex-wrap: wrap; }
+    .ghost-footer .links { display: flex; justify-content: center; gap: 1.5rem; margin-bottom: 0.5rem; flex-wrap: wrap; }
     @keyframes shimmer { 0% { transform:translateX(-100%); } 100% { transform:translateX(350%); } }
-    div[data-testid="stButton"] button { width: 100% !important; font-size: 1.2rem !important; padding: 0.7rem 1rem !important; font-weight: 600 !important; }
-    section[data-testid="stSidebar"] { width: 280px !important; }
+    div[data-testid="stButton"] button { width: 100% !important; font-size: 1.2rem !important; padding: 0.6rem 1rem !important; font-weight: 600 !important; }
+    section[data-testid="stSidebar"] { width: 260px !important; }
+    .stAlert { font-size: 0.85rem !important; }
+    .stTabs { margin-top: 0 !important; }
+    .stTabs [data-baseweb="tab-list"] { gap: 0.5rem !important; }
+    .stTabs [data-baseweb="tab"] { font-size: 0.85rem !important; }
 </style>
 """, unsafe_allow_html=True)
 
 
 # ── Header ─────────────────────────────────────────────────────────────────────
 st.markdown(
-    '<h1 style="text-align:center;font-size:2.2rem;font-weight:700;'
-    'margin:1rem 0 0.15rem;color:#E2E8F0;">👻 Ghost Architect</h1>',
+    '<h1 style="text-align:center;font-size:2rem;font-weight:700;'
+    'margin:0 0 0.1rem;color:#E2E8F0;">👻 Ghost Architect</h1>',
     unsafe_allow_html=True,
 )
 st.markdown(
-'<p style="text-align:center;color:#8A8A9E;margin:0.25rem 0 1.25rem;font-size:1rem;">'
+'<p style="text-align:center;color:#8A8A9E;margin:0 0 1rem;font-size:0.95rem;">'
 'UI screenshots \u2192 PostgreSQL Schema + ER Diagram</p>',
     unsafe_allow_html=True,
 )
 
 # ── Main layout ────────────────────────────────────────────────────────────────
-col_upload, col_schema = st.columns([1, 1], gap="large")
+col_upload, col_schema = st.columns([1, 1], gap="medium")
 
 with col_upload:
-    st.markdown('<p style="font-size:1.15rem;font-weight:700;color:#E2E8F0;margin-bottom:1rem;">1. Upload Screenshots</p>', unsafe_allow_html=True)
+    st.markdown('<p style="font-size:1.1rem;font-weight:700;color:#E2E8F0;margin-bottom:0.75rem;">1. Upload Screenshots</p>', unsafe_allow_html=True)
 
     uploaded_files = st.file_uploader(
         "Upload screenshots (PNG / JPG)",
@@ -706,10 +718,10 @@ with col_upload:
 
 with col_schema:
     if not uploaded_files:
-        st.markdown('<p style="font-size:1.15rem;font-weight:700;color:#E2E8F0;margin-bottom:1rem;">2. Generated Schema</p>', unsafe_allow_html=True)
+        st.markdown('<p style="font-size:1.1rem;font-weight:700;color:#E2E8F0;margin-bottom:0.75rem;">2. Generated Schema</p>', unsafe_allow_html=True)
         st.info("Upload screenshots on the left", icon="📸")
     elif len(uploaded_files) < MIN_REQUIRED_IMAGES:
-        st.markdown('<p style="font-size:1.15rem;font-weight:700;color:#E2E8F0;margin-bottom:1rem;">2. Generated Schema</p>', unsafe_allow_html=True)
+        st.markdown('<p style="font-size:1.1rem;font-weight:700;color:#E2E8F0;margin-bottom:0.75rem;">2. Generated Schema</p>', unsafe_allow_html=True)
         st.info(f"Upload {MIN_REQUIRED_IMAGES - len(uploaded_files)} more screenshot{'s' if MIN_REQUIRED_IMAGES - len(uploaded_files) != 1 else ''}", icon="📸")
 
 
