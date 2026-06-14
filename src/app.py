@@ -131,11 +131,11 @@ with st.sidebar:
 
     st.markdown("**How it works**")
     st.markdown(
-        "1. Upload 3–6 UI screenshots\n"
-        "2. Click Generate Schema\n"
-        "3. Get SQL + ER diagram"
+        "1. Upload 3–6 UI screenshots from the same web app\n"
+        "2. Include list view, form, and detail screens\n"
+        "3. Click Generate Schema → get SQL + ER diagram"
     )
-    st.caption("3 analyses per session · No GPU needed")
+    st.caption("3 analyses per session · No GPU required")
 
     st.divider()
     with st.expander("🔑 Use your own API key"):
@@ -652,8 +652,16 @@ st.markdown("""
 
 # ── Header ─────────────────────────────────────────────────────────────────────
 with st.container(border=True):
-    st.markdown('<h1 style="text-align:center;font-size:2.5rem;font-weight:800;margin:0;color:var(--foreground);">👻 Ghost Architect</h1>', unsafe_allow_html=True)
-    st.markdown('<p style="text-align:center;color:var(--muted-foreground);margin:0.25rem 0 1rem;">Upload UI screenshots → Production-ready database schema + ER Diagram</p>', unsafe_allow_html=True)
+    st.markdown(
+        '<h1 style="text-align:center;font-size:2.5rem;font-weight:800;'
+        'margin:0;color:#E2E8F0;">👻 Ghost Architect</h1>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<p style="text-align:center;color:#8A8A9E;margin:0.25rem 0 1rem;">'
+        'Upload UI screenshots → Production-ready database schema + ER Diagram</p>',
+        unsafe_allow_html=True,
+    )
     cols = st.columns(4, gap="small")
     badge_items = [
         ("Gemini API", True),
@@ -663,12 +671,12 @@ with st.container(border=True):
     ]
     for col, (text, dot) in zip(cols, badge_items):
         with col:
-            dot_html = '<span style="width:6px;height:6px;border-radius:50%;background:#3b82f6;display:inline-block;"></span> ' if dot else ""
+            dot_html = '<span style="width:6px;height:6px;border-radius:50%;background:#3b82f6;display:inline-block;"></span>' if dot else ""
             st.markdown(
                 f'<p style="text-align:center;font-size:0.75rem;color:#8A8A9E;'
                 f'margin:0;padding:0.25rem 0.5rem;border:1px solid #252533;'
                 f'border-radius:999px;background:#111118;">'
-                f'{dot_html}{text}</p>',
+                f'{dot_html}{" " if dot_html else ""}{text}</p>',
                 unsafe_allow_html=True,
             )
 
@@ -676,7 +684,7 @@ with st.container(border=True):
 col_upload, col_schema = st.columns([1, 1], gap="large")
 
 with col_upload:
-    st.markdown(f'<p style="font-size:1.1rem;font-weight:700;color:var(--foreground);margin-bottom:1rem;"><span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:8px;background:#2563eb;color:white;font-size:0.75rem;font-weight:700;margin-right:0.5rem;">1</span> Upload Screenshots</p>', unsafe_allow_html=True)
+    st.markdown(f'<p style="font-size:1.1rem;font-weight:700;color:#E2E8F0;margin-bottom:1rem;"><span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:8px;background:#2563eb;color:white;font-size:0.75rem;font-weight:700;margin-right:0.5rem;">1</span> Upload Screenshots</p>', unsafe_allow_html=True)
 
     uploaded_files = st.file_uploader(
         "Upload screenshots (PNG / JPG)",
@@ -702,12 +710,12 @@ with col_upload:
             for ci, (col, f) in enumerate(zip(cols, row_files)):
                 with col:
                     st.image(PIL.Image.open(io.BytesIO(f.getvalue())).convert("RGB"), use_container_width=True)
-                    st.markdown(f'<p style="font-size:0.7rem;color:var(--muted-foreground);text-align:center;margin-top:-0.3rem;">{f.name[:20]}{"..." if len(f.name) > 20 else ""}</p>', unsafe_allow_html=True)
+                    st.markdown(f'<p style="font-size:0.7rem;color:#8A8A9E;text-align:center;margin-top:-0.3rem;">{f.name[:20]}{"..." if len(f.name) > 20 else ""}</p>', unsafe_allow_html=True)
     else:
         st.markdown('<div class="upload-empty">Drop screenshots here</div>', unsafe_allow_html=True)
 
 with col_schema:
-    st.markdown(f'<p style="font-size:1.1rem;font-weight:700;color:var(--foreground);margin-bottom:1rem;"><span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:8px;background:#2563eb;color:white;font-size:0.75rem;font-weight:700;margin-right:0.5rem;">2</span> Generated Schema</p>', unsafe_allow_html=True)
+    st.markdown(f'<p style="font-size:1.1rem;font-weight:700;color:#E2E8F0;margin-bottom:1rem;"><span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:8px;background:#2563eb;color:white;font-size:0.75rem;font-weight:700;margin-right:0.5rem;">2</span> Generated Schema</p>', unsafe_allow_html=True)
 
     if not uploaded_files:
         facade.Alert("Upload screenshots on the left to generate a schema", variant="info")
@@ -731,7 +739,7 @@ with col_schema:
                 pil_images.append(img)
 
             status_ph = st.empty()
-            status_ph.markdown(f'<div style="text-align:center;padding:2rem;"><p style="color:var(--muted-foreground);margin-top:0.75rem;">Analyzing UI evidence across all screenshots...</p><div style="width:100%;height:4px;background:#1a1a24;border-radius:4px;margin-top:1rem;overflow:hidden;"><div style="width:40%;height:100%;background:#2563eb;border-radius:4px;animation:shimmer 1.5s infinite;"></div></div></div>', unsafe_allow_html=True)
+            status_ph.markdown(f'<div style="text-align:center;padding:2rem;"><p style="color:#8A8A9E;margin-top:0.75rem;">Analyzing UI evidence across all screenshots...</p><div style="width:100%;height:4px;background:#1a1a24;border-radius:4px;margin-top:1rem;overflow:hidden;"><div style="width:40%;height:100%;background:#2563eb;border-radius:4px;animation:shimmer 1.5s infinite;"></div></div></div>', unsafe_allow_html=True)
 
             try:
                 raw_output, model_used = analyze_screenshots(pil_images, dialect)
@@ -756,11 +764,11 @@ with col_schema:
             st.session_state.last_mermaid = parsed["mermaid"]
             st.session_state.last_sql = parsed["sql"]
             st.session_state.last_model = model_used
-            st.markdown(f'<p style="color:var(--muted-foreground);font-size:0.75rem;margin:0 0 0.75rem;">Generated by {model_used} · {len(uploaded_files)} screenshots analyzed</p>', unsafe_allow_html=True)
+            st.markdown(f'<p style="color:#8A8A9E;font-size:0.75rem;margin:0 0 0.75rem;">Generated by {model_used} · {len(uploaded_files)} screenshots analyzed</p>', unsafe_allow_html=True)
 
             if parsed["explanation"]:
                 with st.container(border=True):
-                    st.markdown(f'<p style="color:var(--muted-foreground);font-size:0.85rem;margin:0;"><strong style="color:var(--foreground);">Design decisions:</strong> {parsed["explanation"]}</p>', unsafe_allow_html=True)
+                    st.markdown(f'<p style="color:#8A8A9E;font-size:0.85rem;margin:0;"><strong style="color:#E2E8F0;">Design decisions:</strong> {parsed["explanation"]}</p>', unsafe_allow_html=True)
 
             tab_vis, tab_sql = facade.Tabs(["ER Diagram", "SQL Schema"])
 
