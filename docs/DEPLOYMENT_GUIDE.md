@@ -19,9 +19,7 @@ No GPU, no local model, no Docker. Entirely API-driven.
 ## Local Setup
 
 ```bash
-uv venv .venv
-source .venv/bin/activate
-uv pip install -r requirements.txt
+pip install -r requirements.txt
 ```
 
 Create `.streamlit/secrets.toml`:
@@ -31,7 +29,7 @@ GEMINI_API_KEY="your-key-here"
 
 Run:
 ```bash
-make app
+streamlit run src/app.py
 ```
 
 ## Model Fallback Chain

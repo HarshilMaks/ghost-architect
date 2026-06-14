@@ -1,142 +1,63 @@
 # Security Guide: API Key Management
 
-## ⚠️ Critical: Never Commit API Keys to GitHub
+**Never commit API keys to GitHub.** The project uses the Google Gemini API.
 
-The project uses the Google Gemini API. **Never commit your actual API keys.**
-
----
-
-## Setup Instructions
+## Setup
 
 ### 1. Copy the Template
 ```bash
 cp .env.example .env
 ```
 
-### 2. Add Your API Keys
-Edit `.env` and fill in your actual keys:
+### 2. Add Your API Key
+Edit `.env`:
 ```
 GEMINI_API_KEY=your_actual_gemini_api_key_here
 ```
 
-### 3. Get API Keys
-
-#### Google Gemini Vision API
+### 3. Get a Gemini API Key
 1. Go to https://aistudio.google.com/app/apikey
 2. Click "Create API Key"
-3. Copy the key and paste into `.env`
-4. Free tier: 60 requests/minute, unlimited requests/day
+3. Free tier: 60 requests/minute, unlimited per day
 
-#### (Optional) OpenAI API
-1. Go to https://platform.openai.com/api-keys
-2. Create new API key
-3. Add to `.env` as `OPENAI_API_KEY`
-
-### 4. Verify Setup
+### 4. Verify
 ```bash
-# Test that your script can load the API key
-uv run streamlit run src/app.py
+streamlit run src/app.py
 ```
-
-If successful, the app will open in your browser.
-
----
 
 ## Security Best Practices
 
-✅ **Do**
-- Use `.env` for all sensitive credentials
-- Keep `.env.example` in repo (shows template only)
-- Use `load_dotenv()` to load from `.env`
+**Do:**
+- Use `.env` or `.streamlit/secrets.toml` for credentials
 - Rotate API keys regularly
-- Monitor API usage in your cloud console
+- Monitor API usage in Google AI Studio
 
-❌ **Don't**
+**Don't:**
 - Hardcode API keys in Python files
-- Commit `.env` to Git (it's in `.gitignore`)
-- Share your API keys in GitHub Issues/Discussions
-- Use the same key across multiple projects
+- Commit `.env` to Git (in `.gitignore`)
+- Share API keys in GitHub Issues/Discussions
 - Log API keys in error messages
-
----
 
 ## File Layout
 
 ```
-ghost_architect_gemma3/
-├── .env                 # ⚠️  YOUR ACTUAL KEYS (NEVER COMMIT)
-├── .env.example         # ✅ Template (safe to commit)
-├── .gitignore           # Already includes .env
+ghost-architect/
+├── .env                   # YOUR ACTUAL KEYS (NEVER COMMIT)
+├── .env.example           # Template (safe to commit)
+├── .gitignore             # Already includes .env
 └── src/
-    └── app.py                  # Loads from secrets
+    └── app.py             # Loads via st.secrets
 ```
 
----
+## GitHub History Warning
 
-## Troubleshooting
-
-### Error: "GEMINI_API_KEY not found in environment variables"
-**Solution:** Create `.env` file (copy from `.env.example`) and add your key.
-
-### Error: "Invalid API key"
-**Solution:** 
-- Copy your key carefully (no extra spaces)
-- Verify key hasn't expired in Google AI Studio
-- Generate a new key and try again
-
-### Error: "Quota exceeded"
-**Solution:**
-- Free tier: 60 requests/minute
-- Wait 1 minute before retrying
-- Upgrade to paid plan for higher limits
-
-### I accidentally committed my .env file!
-**Solution** (⚠️ Immediate action required):
-1. Rotate all API keys immediately
-2. Remove the file from Git history:
-   ```bash
-   git rm --cached .env
-   git commit -m "Remove accidentally committed .env file"
-   git push
-   ```
-3. Generate new API keys and update `.env`
-
----
-
-## Using the API in Code
-
-**❌ Bad (NEVER do this):**
-```python
-API_KEY = "sk-abc123..."  # Hardcoded!
+This repo's git history contains a `copilot-session-*.md` file with exposed API keys from the research phase. Those keys have been rotated. To fully purge sensitive files from git history, use `git filter-branch` or `bfg`:
+```bash
+java -jar bfg.jar --delete-files copilot-session-*.md
+git reflog expire --expire=now --all && git gc --prune=now --aggressive
+git push --force
 ```
-
-**✅ Good (do this):**
-```python
-from dotenv import load_dotenv
-import os
-
-load_dotenv()
-API_KEY = os.environ.get("GEMINI_API_KEY")
-if not API_KEY:
-    raise ValueError("API_KEY not found in .env")
-```
-
-All scripts in this project follow the **✅ Good** pattern.
-
----
-
-## GitHub Security Scanning
-
-GitHub automatically scans for exposed credentials:
-- If you accidentally push an API key, GitHub will notify you
-- Rotate the key immediately
-- Remove from Git history using `git filter-branch` or `bfg`
-
----
 
 ## Questions?
 
-See:
-- `.env.example` — Template for all required keys
-- `src/app.py` — Secure API loading via `st.secrets`
-- `requirements.txt` — python-dotenv package details
+See `.env.example` for template, `src/app.py` for secure API loading via `st.secrets`.
