@@ -75,9 +75,14 @@ def analyze_screenshots(pil_images: list, dialect: str = "PostgreSQL") -> tuple[
             response = client.models.generate_content(
                 model=model_name, contents=contents, config=config
             )
-            if "=== SQL ===" in response.text:
-                return response.text, model_name
-            last_error = ValueError(f"{model_name} ignored the output format")
+            text = response.text
+            if not text.strip():
+                last_error = ValueError(f"{model_name} returned empty response")
+                continue
+            if "=== SQL ===" in text or "CREATE TABLE" in text or "=== MERMAID ===" in text:
+                return text, model_name
+            # Accept any non-empty response as last resort
+            return text, model_name
         except Exception as e:
             last_error = e
     raise last_error or RuntimeError("No models available")
@@ -586,326 +591,31 @@ def render_schema_cards(tables: list[dict]):
 # ── Custom CSS ──────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-
-    html, body, [class*="css"] {
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    }
-
-    .stApp {
-        background: linear-gradient(180deg, #0a0a1a 0%, #0f0f2d 30%, #1a1a3e 100%);
-    }
-
-    .block-container {
-        max-width: 1400px;
-        padding-top: 1rem;
-    }
-
-    /* ── Header ── */
-    .ghost-header {
-        text-align: center;
-        padding: 2.5rem 1rem 1.5rem;
-        margin-bottom: 1.5rem;
-        background: linear-gradient(135deg, rgba(120, 60, 240, 0.12) 0%, rgba(60, 120, 240, 0.08) 50%, rgba(120, 60, 240, 0.04) 100%);
-        border-radius: 24px;
-        border: 1px solid rgba(120, 60, 240, 0.15);
-        position: relative;
-        overflow: hidden;
-    }
-    .ghost-header::before {
-        content: '';
-        position: absolute;
-        top: -50%;
-        left: -50%;
-        width: 200%;
-        height: 200%;
-        background: radial-gradient(circle at 30% 50%, rgba(120, 60, 240, 0.06) 0%, transparent 50%),
-                    radial-gradient(circle at 70% 50%, rgba(60, 120, 240, 0.06) 0%, transparent 50%);
-        pointer-events: none;
-    }
-    .ghost-header h1 {
-        font-size: 3rem;
-        font-weight: 800;
-        background: linear-gradient(135deg, #c084fc 0%, #818cf8 50%, #60a5fa 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        margin: 0 0 0.5rem;
-        letter-spacing: -0.03em;
-        position: relative;
-    }
-    .ghost-header .subtitle {
-        color: rgba(255,255,255,0.55);
-        font-size: 1.05rem;
-        font-weight: 400;
-        margin: 0;
-        position: relative;
-    }
-    .ghost-header .badge-row {
-        display: flex;
-        justify-content: center;
-        gap: 0.75rem;
-        margin-top: 1rem;
-        position: relative;
-        flex-wrap: wrap;
-    }
-    .ghost-header .badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.4rem;
-        padding: 0.35rem 0.9rem;
-        background: rgba(255,255,255,0.06);
-        border: 1px solid rgba(255,255,255,0.08);
-        border-radius: 999px;
-        color: rgba(255,255,255,0.6);
-        font-size: 0.8rem;
-        font-weight: 500;
-    }
-    .ghost-header .badge .dot {
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background: #34d399;
-        display: inline-block;
-        animation: pulse 2s infinite;
-    }
-    @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.4; }
-    }
-
-    /* ── Section titles ── */
-    .section-title {
-        font-size: 1.1rem;
-        font-weight: 700;
-        color: rgba(255,255,255,0.9);
-        margin-bottom: 1rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-    .section-title .num {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 24px;
-        height: 24px;
-        border-radius: 8px;
-        background: linear-gradient(135deg, #7c3aed, #6366f1);
-        color: white;
-        font-size: 0.75rem;
-        font-weight: 700;
-    }
-
-    /* ── Upload area ── */
-    [data-testid="stFileUploader"] {
-        border: 2px dashed rgba(120, 60, 240, 0.25);
-        border-radius: 16px;
-        padding: 0.5rem;
-        background: rgba(255,255,255,0.02);
-        transition: all 0.2s;
-    }
-    [data-testid="stFileUploader"]:hover {
-        border-color: rgba(120, 60, 240, 0.5);
-        background: rgba(255,255,255,0.04);
-    }
-    [data-testid="stFileUploader"] [data-testid="stMarkdownContainer"] p {
-        font-size: 0.9rem;
-        color: rgba(255,255,255,0.5);
-    }
-
-    /* ── Image preview cards ── */
-    .img-card {
-        background: rgba(255,255,255,0.04);
-        border: 1px solid rgba(255,255,255,0.06);
-        border-radius: 12px;
-        overflow: hidden;
-        transition: all 0.2s;
-    }
-    .img-card:hover {
-        border-color: rgba(120, 60, 240, 0.3);
-        transform: translateY(-1px);
-    }
-    .img-card img {
-        width: 100%;
-        height: 160px;
-        object-fit: cover;
-        display: block;
-    }
-    .img-card .label {
-        padding: 0.5rem 0.75rem;
-        font-size: 0.75rem;
-        color: rgba(255,255,255,0.5);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        background: rgba(0,0,0,0.2);
-    }
-
-    /* ── Generate button ── */
-    div.stButton > button {
-        background: linear-gradient(135deg, #7c3aed 0%, #6366f1 100%) !important;
-        color: white !important;
-        border: none !important;
-        border-radius: 12px !important;
-        padding: 0.7rem 1.5rem !important;
-        font-weight: 600 !important;
-        font-size: 1rem !important;
-        transition: all 0.2s !important;
-        box-shadow: 0 4px 20px rgba(120, 60, 240, 0.3) !important;
-    }
-    div.stButton > button:hover {
-        transform: translateY(-2px) !important;
-        box-shadow: 0 8px 30px rgba(120, 60, 240, 0.4) !important;
-    }
-    div.stButton > button:active {
-        transform: translateY(0) !important;
-    }
-
-    /* ── Result containers ── */
-    .result-container {
-        background: rgba(255,255,255,0.03);
-        border: 1px solid rgba(255,255,255,0.06);
-        border-radius: 16px;
-        padding: 1.5rem;
-        margin-top: 1rem;
-    }
-    .result-container h3 {
-        color: rgba(255,255,255,0.85);
-        font-size: 1rem;
-        font-weight: 600;
-        margin: 0 0 1rem;
-    }
-
-    /* ── Code blocks ── */
-    [data-testid="stCode"] {
-        border-radius: 12px !important;
-        border: 1px solid rgba(255,255,255,0.06) !important;
-    }
-    [data-testid="stCode"] pre {
-        background: #0d0d1f !important;
-    }
-
-    /* ── Download button row ── */
-    .dl-row {
-        display: flex;
-        gap: 0.75rem;
-        margin-top: 1rem;
-        flex-wrap: wrap;
-    }
-    div[data-testid="column"] div.stButton > button {
-        background: rgba(255,255,255,0.06) !important;
-        box-shadow: none !important;
-        font-size: 0.85rem !important;
-        padding: 0.5rem 1rem !important;
-        border: 1px solid rgba(255,255,255,0.08) !important;
-    }
-    div[data-testid="column"] div.stButton > button:hover {
-        background: rgba(120, 60, 240, 0.15) !important;
-        border-color: rgba(120, 60, 240, 0.3) !important;
-    }
-
-    /* ── Footer ── */
-    .ghost-footer {
-        text-align: center;
-        padding: 2.5rem 1rem 1rem;
-        margin-top: 3rem;
-        border-top: 1px solid rgba(255,255,255,0.05);
-        color: rgba(255,255,255,0.25);
-        font-size: 0.8rem;
-    }
-    .ghost-footer a {
-        color: rgba(120, 60, 240, 0.5);
-        text-decoration: none;
-        transition: color 0.2s;
-    }
-    .ghost-footer a:hover {
-        color: rgba(120, 60, 240, 0.8);
-    }
-    .ghost-footer .links {
-        display: flex;
-        justify-content: center;
-        gap: 1.5rem;
-        margin-bottom: 0.75rem;
-        flex-wrap: wrap;
-    }
-
-    /* ── Status info/warning/error overrides ── */
-    .stAlert {
-        border-radius: 12px !important;
-        border: none !important;
-    }
-    div[data-testid="stNotification"] {
-        border-radius: 12px !important;
-    }
-
-    /* ── Sidebar ── */
-    [data-testid="stSidebar"] {
-        background: rgba(15, 15, 40, 0.8);
-        border-right: 1px solid rgba(255,255,255,0.04);
-    }
-    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h2,
-    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h3 {
-        color: rgba(255,255,255,0.85);
-    }
-    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {
-        color: rgba(255,255,255,0.5);
-        font-size: 0.85rem;
-    }
-    [data-testid="stSidebar"] hr {
-        border-color: rgba(255,255,255,0.06);
-    }
-    [data-testid="stSidebar"] .stSelectbox label {
-        color: rgba(255,255,255,0.6);
-        font-size: 0.8rem;
-        font-weight: 500;
-    }
-    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] .st-info {
-        background: rgba(120, 60, 240, 0.1);
-        border: 1px solid rgba(120, 60, 240, 0.15);
-        color: rgba(255,255,255,0.7);
-        font-size: 0.8rem;
-    }
-
-    /* ── Tabs ── */
-    [data-testid="stTabs"] button {
-        border-radius: 10px 10px 0 0 !important;
-        font-weight: 500 !important;
-        font-size: 0.85rem !important;
-    }
-    [data-testid="stTabs"] button[aria-selected="true"] {
-        background: rgba(120, 60, 240, 0.12) !important;
-        border-bottom: 2px solid #7c3aed !important;
-    }
+    .stApp { background: #ffffff; }
+    .block-container { max-width: 1400px; padding-top: 1rem; }
+    .main-header { text-align: center; padding: 1.5rem 0 0.5rem; }
+    .main-header h1 { font-size: 1.8rem; font-weight: 700; color: #111827; margin: 0; }
+    .main-header p { color: #6b7280; font-size: 0.9rem; margin: 0.25rem 0 0; }
+    .section-title { font-size: 1rem; font-weight: 600; color: #374151; margin-bottom: 0.75rem; }
+    [data-testid="stFileUploader"] { border: 1px solid #d1d5db; border-radius: 8px; padding: 0.5rem; }
+    [data-testid="stFileUploader"]:hover { border-color: #9ca3af; }
+    .stAlert { border-radius: 8px !important; }
+    .ghost-footer { text-align: center; padding: 2rem 1rem 1rem; margin-top: 2rem; border-top: 1px solid #e5e7eb; color: #9ca3af; font-size: 0.8rem; }
+    .ghost-footer a { color: #6b7280; text-decoration: none; }
+    .ghost-footer a:hover { color: #374151; }
+    .ghost-footer .links { display: flex; justify-content: center; gap: 1.5rem; margin-bottom: 0.5rem; flex-wrap: wrap; }
 </style>
 """, unsafe_allow_html=True)
 
 
-# ── Header ─────────────────────────────────────────────────────────────────────
-st.markdown("""
-<div class="ghost-header">
-    <h1>👻 Ghost Architect</h1>
-    <p class="subtitle">Upload UI screenshots → Production-ready PostgreSQL schema + ER Diagram</p>
-    <div class="badge-row">
-        <span class="badge"><span class="dot"></span> Gemini 2.5 Flash</span>
-        <span class="badge">🔒 No GPU needed</span>
-        <span class="badge">⚡ Free tier</span>
-        <span class="badge">📦 Multi-image</span>
-    </div>
-</div>
-""", unsafe_allow_html=True)
-
-st.markdown(
-    "<p style='text-align:center;color:rgba(255,255,255,0.3);font-size:0.85rem;margin-top:-0.5rem;margin-bottom:1.5rem;'>"
-    "Drop 3-6 UI screenshots from the same product. Ghost Architect analyzes all evidence and generates a complete database schema.</p>",
-    unsafe_allow_html=True,
-)
-
 # ── Main layout ────────────────────────────────────────────────────────────────
+st.markdown('<div class="main-header"><h1>👻 Ghost Architect</h1><p>UI screenshots → Database schema + ER Diagram</p></div>', unsafe_allow_html=True)
+st.divider()
+
 col_upload, col_schema = st.columns([1, 1], gap="large")
 
 with col_upload:
-    st.markdown('<div class="section-title"><span class="num">1</span> Upload Screenshots</div>', unsafe_allow_html=True)
+    st.markdown('<p class="section-title"><strong>1. Upload Screenshots</strong></p>', unsafe_allow_html=True)
 
     uploaded_files = st.file_uploader(
         "Upload 3-6 PNG/JPG screenshots from the same product",
@@ -916,179 +626,78 @@ with col_upload:
 
     if uploaded_files:
         count = len(uploaded_files)
-        is_valid = count >= MIN_REQUIRED_IMAGES
-
-        if is_valid:
-            st.markdown(
-                f"<p style='color:#34d399;font-size:0.85rem;font-weight:500;margin:0.5rem 0;'>"
-                f"✓ {count} screenshot{'s' if count != 1 else ''} uploaded</p>",
-                unsafe_allow_html=True,
-            )
+        if count >= MIN_REQUIRED_IMAGES:
+            st.success(f"{count} screenshots uploaded")
         else:
-            st.markdown(
-                f"<p style='color:#fbbf24;font-size:0.85rem;font-weight:500;margin:0.5rem 0;'>"
-                f"⚠️ Need at least {MIN_REQUIRED_IMAGES} screenshots ({count} uploaded)</p>",
-                unsafe_allow_html=True,
-            )
-
+            st.warning(f"Need {MIN_REQUIRED_IMAGES - count} more screenshot{'s' if MIN_REQUIRED_IMAGES - count != 1 else ''}")
         if count > MAX_RECOMMENDED_IMAGES:
-            st.info(f"ℹ️ {MAX_RECOMMENDED_IMAGES} screenshots is the sweet spot. You can continue with {count}.")
+            st.caption(f"{MAX_RECOMMENDED_IMAGES} is the sweet spot. You can continue with {count}.")
 
-        rows = (count + 2) // 3
-        for row in range(rows):
-            row_files = uploaded_files[row * 3 : (row + 1) * 3]
-            cols = st.columns(len(row_files))
-            for ci, (col, f) in enumerate(zip(cols, row_files)):
-                with col:
-                    img_bytes = f.getvalue()
-                    img = PIL.Image.open(io.BytesIO(img_bytes)).convert("RGB")
-                    st.image(img, use_container_width=True)
-                    st.markdown(
-                        f"<p style='font-size:0.7rem;color:rgba(255,255,255,0.35);"
-                        f"text-align:center;margin-top:-0.3rem;'>{f.name[:20]}{'...' if len(f.name) > 20 else ''}</p>",
-                        unsafe_allow_html=True,
-                    )
-    else:
-        st.markdown(
-            "<div style='text-align:center;padding:2rem 1rem;border:2px dashed rgba(255,255,255,0.06);"
-            "border-radius:16px;'>"
-            "<p style='font-size:2.5rem;margin:0;opacity:0.3;'>🖼️</p>"
-            "<p style='color:rgba(255,255,255,0.25);font-size:0.9rem;'>Drop screenshots here</p>"
-            "</div>",
-            unsafe_allow_html=True,
-        )
+        for f in uploaded_files:
+            img = PIL.Image.open(io.BytesIO(f.getvalue())).convert("RGB")
+            st.image(img, use_container_width=True)
 
 with col_schema:
-    st.markdown('<div class="section-title"><span class="num">2</span> Generated Schema</div>', unsafe_allow_html=True)
+    st.markdown('<p class="section-title"><strong>2. Generated Schema</strong></p>', unsafe_allow_html=True)
 
     if not uploaded_files:
-        st.markdown(
-            "<div style='text-align:center;padding:2.5rem 1rem;'>"
-            "<p style='font-size:3rem;margin:0;opacity:0.2;'>📊</p>"
-            "<p style='color:rgba(255,255,255,0.25);font-size:0.9rem;margin-top:0.5rem;'>"
-            "Upload screenshots on the left to generate a schema</p>"
-            "</div>",
-            unsafe_allow_html=True,
-        )
+        st.info("Upload screenshots on the left to generate a schema")
     elif len(uploaded_files) < MIN_REQUIRED_IMAGES:
-        st.markdown(
-            "<div style='text-align:center;padding:2.5rem 1rem;'>"
-            "<p style='font-size:3rem;margin:0;opacity:0.2;'>📸</p>"
-            "<p style='color:rgba(255,255,255,0.25);font-size:0.9rem;margin-top:0.5rem;'>"
-            f"Upload {MIN_REQUIRED_IMAGES - len(uploaded_files)} more screenshot{'s' if MIN_REQUIRED_IMAGES - len(uploaded_files) != 1 else ''} for precise schema generation</p>"
-            "</div>",
-            unsafe_allow_html=True,
-        )
+        st.info(f"Upload {MIN_REQUIRED_IMAGES - len(uploaded_files)} more screenshot{'s' if MIN_REQUIRED_IMAGES - len(uploaded_files) != 1 else ''} to enable generation")
     else:
-        with st.container():
-            generate_btn = st.button(
-                "🚀 Generate Schema Architecture",
-                type="primary",
-                use_container_width=True,
-            )
+        generate_btn = st.button("Generate Schema", type="primary", use_container_width=True)
 
         if generate_btn:
-            # Rate limit guard
             if "request_count" not in st.session_state:
                 st.session_state.request_count = 0
-
             if st.session_state.request_count >= 3:
-                st.warning(
-                    "You've used 3 free analyses this session. "
-                    "Refresh to continue, or check the repo to run locally."
-                )
+                st.warning("You've used 3 free analyses this session. Refresh to continue.")
                 st.stop()
 
             pil_images = []
-            for uploaded_file in uploaded_files:
-                img = PIL.Image.open(io.BytesIO(uploaded_file.getvalue()))
+            for f in uploaded_files:
+                img = PIL.Image.open(io.BytesIO(f.getvalue()))
                 if img.mode != "RGB":
                     img = img.convert("RGB")
                 pil_images.append(img)
 
-            # Analysis with progress
-            status_ph = st.empty()
-            status_ph.markdown(
-                "<div style='text-align:center;padding:2rem;'>"
-                "<p style='font-size:1.5rem;margin:0;'>🔮</p>"
-                "<p style='color:rgba(255,255,255,0.6);margin-top:0.75rem;'>"
-                "Analyzing UI evidence across all screenshots...</p>"
-                "<div style='width:100%;height:4px;background:rgba(255,255,255,0.06);"
-                "border-radius:4px;margin-top:1rem;overflow:hidden;'>"
-                "<div style='width:40%;height:100%;background:linear-gradient(90deg,#7c3aed,#6366f1);"
-                "border-radius:4px;animation:shimmer 1.5s infinite;'></div>"
-                "</div>"
-                "<style>@keyframes shimmer { 0% { transform:translateX(-100%); } 100% { transform:translateX(350%); } }</style>"
-                "</div>",
-                unsafe_allow_html=True,
-            )
+            with st.spinner("Analyzing screenshots..."):
+                try:
+                    raw_output, model_used = analyze_screenshots(pil_images, dialect)
+                    st.session_state.request_count += 1
+                except Exception as e:
+                    err_str = str(e)
+                    if "API_KEY_INVALID" in err_str or "PERMISSION_DENIED" in err_str or "UNAUTHENTICATED" in err_str:
+                        st.error("Gemini API key is invalid or expired. Admin must update it.")
+                    elif "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+                        st.error("API rate limit reached. Wait a moment and try again.")
+                    elif "503" in err_str or "UNAVAILABLE" in err_str:
+                        st.error("Gemini service is temporarily unavailable. Try again in a few seconds.")
+                    else:
+                        st.error(f"Analysis failed: {err_str}")
+                    st.stop()
 
-            try:
-                raw_output, model_used = analyze_screenshots(pil_images, dialect)
-                st.session_state.request_count += 1
-            except Exception as e:
-                err_str = str(e)
-                if "API_KEY_INVALID" in err_str or "PERMISSION_DENIED" in err_str or "UNAUTHENTICATED" in err_str:
-                    st.error(
-                        "⚠️ **Gemini API key is invalid or expired.**\n\n"
-                        "The app admin needs to update the API key in `.streamlit/secrets.toml` "
-                        "(local) or Streamlit Cloud Secrets (deployed).\n\n"
-                        "Get a new key at https://aistudio.google.com → Get API Key."
-                    )
-                elif "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
-                    st.error(
-                        "⚠️ **API rate limit reached.**\n\n"
-                        "Too many requests. Wait a minute and try again."
-                    )
-                elif "503" in err_str or "UNAVAILABLE" in err_str:
-                    st.error(
-                        "⚠️ **Gemini service is temporarily unavailable.**\n\n"
-                        "This is usually transient. Please try again in a few seconds."
-                    )
-                else:
-                    st.error(f"Analysis failed: {err_str}")
-                status_ph.empty()
-                st.stop()
-
-            status_ph.empty()
-
-            # Parse & show results
             parsed = split_consolidated_output(raw_output)
+            st.caption(f"Generated by {model_used} · {len(uploaded_files)} screenshots")
 
-            st.markdown(
-                f"<p style='color:rgba(255,255,255,0.35);font-size:0.75rem;margin:0 0 0.75rem;'>"
-                f"Generated by {model_used}  ·  {len(uploaded_files)} screenshots analyzed</p>",
-                unsafe_allow_html=True,
-            )
-
-            # Explanation
             if parsed["explanation"]:
-                st.markdown(
-                    f"<div style='background:rgba(120,60,240,0.08);border:1px solid rgba(120,60,240,0.12);"
-                    f"border-radius:12px;padding:1rem;margin-bottom:1rem;'>"
-                    f"<p style='color:rgba(255,255,255,0.6);font-size:0.85rem;margin:0;'>"
-                    f"<strong style='color:rgba(255,255,255,0.8);'>Design decisions:</strong> "
-                    f"{parsed['explanation']}</p></div>",
-                    unsafe_allow_html=True,
-                )
+                st.info(parsed["explanation"])
 
-            # Results in tabs
-            tab_vis, tab_sql = st.tabs(["📊 ER Diagram", "💻 SQL Schema"])
+            tab_vis, tab_sql = st.tabs(["ER Diagram", "SQL Schema"])
 
             with tab_vis:
                 if parsed["mermaid"]:
-                    mermaid_html = build_mermaid_html(
-                        parsed["mermaid"],
-                        "Ghost Architect: Database Schema",
-                        parsed["sql"] or "",
+                    st.components.v1.html(
+                        build_mermaid_html(parsed["mermaid"], "Ghost Architect: Database Schema", parsed["sql"] or ""),
+                        height=900, scrolling=True,
                     )
-                    st.components.v1.html(mermaid_html, height=900, scrolling=True)
+                elif parsed["sql"]:
+                    parsed_tables = parse_create_tables(parsed["sql"])
+                    if parsed_tables:
+                        render_schema_cards(parsed_tables)
+                    st.info("Mermaid diagram not available.")
                 else:
-                    if parsed["sql"]:
-                        parsed_tables = parse_create_tables(parsed["sql"])
-                        if parsed_tables:
-                            render_schema_cards(parsed_tables)
-                    st.info("Mermaid diagram not available. Showing SQL below.")
+                    st.code(raw_output, language="text")
 
             with tab_sql:
                 if parsed["sql"]:
@@ -1096,55 +705,17 @@ with col_schema:
                 else:
                     st.code(raw_output, language="text")
 
-            # Download buttons
             if parsed["sql"] or parsed["mermaid"]:
-                st.markdown("<div style='margin-top:1rem;'>", unsafe_allow_html=True)
-                dl_col1, dl_col2, dl_col3, _ = st.columns([1, 1, 1.5, 0.5])
-
+                st.markdown("---")
+                dl_col1, dl_col2, dl_col3 = st.columns(3)
                 if parsed["sql"]:
-                    dl_col1.download_button(
-                        label="📄 Download SQL",
-                        data=parsed["sql"],
-                        file_name="ghost_architect_schema.sql",
-                        mime="text/plain",
-                        use_container_width=True,
-                    )
-
+                    dl_col1.download_button("Download SQL", data=parsed["sql"], file_name="ghost_architect_schema.sql", mime="text/plain", use_container_width=True)
                 if parsed["mermaid"]:
-                    dl_col2.download_button(
-                        label="📊 Download Mermaid",
-                        data=parsed["mermaid"],
-                        file_name="ghost_architect_schema.mmd",
-                        mime="text/plain",
-                        use_container_width=True,
-                    )
-
+                    dl_col2.download_button("Download Mermaid", data=parsed["mermaid"], file_name="ghost_architect_schema.mmd", mime="text/plain", use_container_width=True)
                 if parsed["sql"] and parsed["mermaid"]:
-                    report = f"""# Ghost Architect — Database Schema
+                    report = f"# Ghost Architect — Database Schema\n\n## Design Decisions\n{parsed.get('explanation', 'N/A')}\n\n## ER Diagram\n```mermaid\n{parsed['mermaid']}\n```\n\n## DDL\n```sql\n{parsed['sql']}\n```\n"
+                    dl_col3.download_button("Download Report (.md)", data=report, file_name="ghost_architect_schema_report.md", mime="text/markdown", use_container_width=True)
 
-## Design Decisions
-{parsed.get('explanation', 'N/A')}
-
-## Entity Relationship Diagram
-```mermaid
-{parsed['mermaid']}
-```
-
-## PostgreSQL DDL
-```sql
-{parsed['sql']}
-```
-"""
-                    dl_col3.download_button(
-                        label="📦 Download Full Report (.md)",
-                        data=report,
-                        file_name="ghost_architect_schema_report.md",
-                        mime="text/markdown",
-                        use_container_width=True,
-                    )
-                st.markdown("</div>", unsafe_allow_html=True)
-
-            # Fallback schema cards
             if not parsed["mermaid"] and not parsed["sql"]:
                 parsed_tables = parse_create_tables(raw_output)
                 if parsed_tables:
@@ -1155,10 +726,10 @@ with col_schema:
 st.markdown("""
 <div class="ghost-footer">
     <div class="links">
-        <a href="https://github.com/HarshilMaks/ghost_architect_gemma3" target="_blank">GitHub</a>
-        <a href="https://huggingface.co/harshilmaks/ghost-architect-gemma3-adapter" target="_blank">HuggingFace Model</a>
-        <a href="https://aistudio.google.com" target="_blank">Gemini API</a>
+        <a href="https://github.com/HarshilMaks/ghost_architect_gemma3">GitHub</a>
+        <a href="https://huggingface.co/harshilmaks/ghost-architect-gemma3-adapter">HuggingFace</a>
+        <a href="https://aistudio.google.com">Gemini API</a>
     </div>
-    <p>Ghost Architect · Fine-tuned Gemma-3-12B + Gemini API · Apache 2.0</p>
+    <p>Ghost Architect · Apache 2.0</p>
 </div>
 """, unsafe_allow_html=True)
