@@ -646,6 +646,7 @@ st.markdown("""
     .stMainBlockContainer { padding-top: 0.5rem !important; padding-bottom: 0.5rem !important; padding-left: 2rem !important; padding-right: 2rem !important; }
     div[data-testid="stVerticalBlock"] { gap: 0.5rem !important; }
     div[data-testid="stColumn"] { padding-left: 0.25rem !important; padding-right: 0.25rem !important; }
+    div[data-testid="stButton"] button { width: 100% !important; font-size: 1.05rem !important; padding: 0.5rem 1rem !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -721,7 +722,7 @@ with col_schema:
     elif len(uploaded_files) < MIN_REQUIRED_IMAGES:
         st.info(f"Upload {MIN_REQUIRED_IMAGES - len(uploaded_files)} more screenshot{'s' if MIN_REQUIRED_IMAGES - len(uploaded_files) != 1 else ''} for precise schema generation", icon="📸")
     else:
-        generate_btn = st.button("Generate Schema", type="primary", use_container_width=True, key="generate_btn")
+        generate_btn = st.button("✦ Generate Schema", type="primary", use_container_width=True, key="generate_btn")
 
         if generate_btn:
             if "request_count" not in st.session_state:
