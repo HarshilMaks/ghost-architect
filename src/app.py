@@ -8,6 +8,7 @@ import streamlit as st
 from google import genai
 from google.genai import types
 import PIL.Image
+import facade
 
 # ── Page config (must be first Streamlit call) ───────────────────────────────
 st.set_page_config(
@@ -17,52 +18,80 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-MIN_REQUIRED_IMAGES = 3
-MAX_RECOMMENDED_IMAGES = 6
-UNIVERSAL_BACKEND_ASSUMPTIONS = (
-    "Universal backend assumptions (apply unless already present or strongly contradictory):\n"
-    "1. Every table should include a primary key `id` (prefer BIGSERIAL PRIMARY KEY or UUID PRIMARY KEY).\n"
-    "2. Every table should include `created_at` and `updated_at` timestamp columns with sensible defaults.\n"
-    "3. If login/authentication context is visible (login form, sign-in, auth flow), include "
-    "`password_hash` and `auth_token` columns in the user/auth table even if not directly visible.\n"
-    "4. Prefer snake_case naming and avoid duplicate semantic columns."
+# ── Facade theme ───────────────────────────────────────────────────────────────
+facade.theme.apply(
+    preset="dark",
+    primary="#3B82F6",
+    primary_foreground="#FFFFFF",
+    background="#0a0a0f",
+    foreground="#E2E8F0",
+    muted="#111118",
+    muted_foreground="#8A8A9E",
+    border="#252533",
+    chrome_background="#0d0d14",
+    chrome_foreground="#E2E8F0",
+    chrome_border="#1a1a24",
+    font_sans="Inter, system-ui",
+    radius="md",
 )
 
-SCHEMA_PROMPT = """You are a senior database architect. Analyze ALL uploaded UI screenshots together — they belong to the same web application.
+MIN_REQUIRED_IMAGES = 3
+MAX_RECOMMENDED_IMAGES = 6
+SCHEMA_PROMPT = """You are a senior database architect at Microsoft. Analyze ALL uploaded UI screenshots together — they belong to the same production web application.
 
-Identify every entity, relationship, and data field visible across ALL screens combined.
+Your task: produce a complete, enterprise-grade database schema that a developer can implement immediately.
 
-Generate a complete, production-ready PostgreSQL schema following these rules:
-- Every table MUST have: id UUID PRIMARY KEY DEFAULT gen_random_uuid(), created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW()
-- Use snake_case for all table names and column names
-- Add FK constraints: REFERENCES table_name(id) ON DELETE CASCADE or RESTRICT as contextually appropriate
-- Add CREATE INDEX on every FK column
-- Add NOT NULL constraints wherever the UI clearly requires a value
-- Create junction tables for any many-to-many relationships visible in the UI
-- Add COMMENT ON TABLE for each table describing what it stores in plain English
+## Screenshot Analysis Protocol
+1. **List/Table view**: Identify the main entity, every column header (these are your fields), sort/filter controls (these hint at indexes), and action buttons (create, edit, delete — these define CRUD).
+2. **Create/Edit form**: Every labeled input, dropdown, checkbox, date picker, textarea, and file upload maps to a column. Required-field indicators (*) → NOT NULL. Input types guide data types.
+3. **Detail/Dashboard view**: Additional fields not in forms/lists. Aggregated counts hint at summary queries or materialized views.
 
-IMPORTANT: Return your response in EXACTLY this format. Nothing before the first ===, nothing after the last line:
+## Schema Requirements
+- Every table: `id UUID PRIMARY KEY DEFAULT gen_random_uuid()`, `created_at TIMESTAMPTZ DEFAULT NOW()`, `updated_at TIMESTAMPTZ DEFAULT NOW()`
+- Infer data types from UI elements: text input → VARCHAR(255) or TEXT, number/spinbox → INTEGER or DECIMAL, date picker → DATE, datetime picker → TIMESTAMPTZ, checkbox → BOOLEAN, select/radio → VARCHAR or ENUM, file upload → TEXT (URL) or BYTEA
+- Foreign keys: every relationship visible in the UI gets an FK column with REFERENCES and ON DELETE CASCADE (child data) or RESTRICT (critical records)
+- Indexes: CREATE INDEX on every FK column, every column used in sort/filter, every column used in search
+- Constraints: NOT NULL on all required fields, UNIQUE on natural identifiers (email, username, slug), CHECK on columns with validatable ranges
+- Naming: snake_case, singular table names (`user`, `organization`, not `users`, `organizations`), FK columns named `{referenced_table}_id`
+- Junction tables for many-to-many: named `{table_a}_{table_b}`, composite PK on both FKs
+- Enums: CREATE TYPE for columns with 3-7 fixed values visible in the UI
+- Table comments: COMMENT ON TABLE for every table explaining what real-world entity it models
+- Column comments: COMMENT ON COLUMN for any non-obvious column (status codes, relationship meanings)
+
+## Output Format — EXACTLY this structure, nothing before ===, nothing after last line:
 
 === MERMAID ===
 erDiagram
-    [complete Mermaid ER diagram with all tables and relationships]
+    [Complete Mermaid ER diagram. Every table, every column, every relationship with proper cardinality notation (||--o{, ||--||, }o--o{). Include PK markers, FK markers, and column types in the entity blocks.]
+
 === SQL ===
 -- PostgreSQL Schema generated by Ghost Architect
-[complete CREATE TABLE and CREATE INDEX statements]
+[All CREATE TYPE, CREATE TABLE, CREATE INDEX, and COMMENT ON statements in dependency order. No ALTER TABLE — use inline FK references.]
+
 === EXPLANATION ===
-[2-3 sentences: key design decisions and how you inferred relationships from the UI]"""
+[3-4 sentences: key entities identified, how UI patterns mapped to relationships, notable design decisions, and any assumptions made about invisible state/authentication.]"""
 
 
 # ── Gemini API ────────────────────────────────────────────────────────────────
 def _get_client():
-    return genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
+    key = st.session_state.get("user_api_key", "").strip() or st.secrets.get("GEMINI_API_KEY", "")
+    return genai.Client(api_key=key)
 
 
-MODEL_CANDIDATES = ["gemini-3.5-flash", "gemini-2.5-flash"]
+MODEL_CANDIDATES = [
+    "gemini-3.5-flash",
+    "gemini-3.1-flash-lite",
+    "gemini-3-flash-preview",
+    "gemini-2.5-flash",
+    "gemini-2.5-flash-lite",
+    "gemini-2.5-flash-image",
+    "gemini-2.0-flash",
+    "gemini-flash-latest",
+]
 
 
 def analyze_screenshots(pil_images: list, dialect: str = "PostgreSQL") -> tuple[str, str]:
-    """Send images to Gemini with model fallback. Returns (raw_output, model_used)."""
+    """Send images to Gemini with model fallback chain. Returns (raw_output, model_used)."""
     client = _get_client()
     dialect_note = f"\n\nGenerate schema for {dialect}. Use correct {dialect} syntax and native data types."
     prompt = SCHEMA_PROMPT + dialect_note
@@ -75,23 +104,22 @@ def analyze_screenshots(pil_images: list, dialect: str = "PostgreSQL") -> tuple[
             response = client.models.generate_content(
                 model=model_name, contents=contents, config=config
             )
-            text = response.text
-            if not text.strip():
+            text = response.text.strip()
+            if not text:
                 last_error = ValueError(f"{model_name} returned empty response")
                 continue
-            if "=== SQL ===" in text or "CREATE TABLE" in text or "=== MERMAID ===" in text:
+            if "=== SQL ===" in text and "=== MERMAID ===" in text:
                 return text, model_name
-            # Accept any non-empty response as last resort
-            return text, model_name
+            last_error = ValueError(f"{model_name} didn't follow output format")
         except Exception as e:
             last_error = e
-    raise last_error or RuntimeError("No models available")
+    raise last_error or RuntimeError("All models failed to generate valid output")
 
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.title("👻 Ghost Architect")
-    st.markdown("**UI → PostgreSQL Schema**")
+    st.markdown("**Ghost Architect**")
+    st.caption("UI → Database Schema")
     st.divider()
 
     dialect = st.selectbox(
@@ -101,18 +129,26 @@ with st.sidebar:
         help="Changes the SQL syntax and data types in the generated schema."
     )
 
-    st.divider()
-    st.markdown("**How it works**")
-    st.markdown(
-        "1. Upload **3-6 screenshots** from the same product flow\n"
-        "2. Include: list/table view + create/edit form + detail/dashboard\n"
-        "3. All images sent to Gemini 2.5 Flash in one API call\n"
-        "4. Returns consolidated PostgreSQL schema + Mermaid ER diagram"
-    )
     st.info(
-        "Each session allows 3 analyses. Refresh to reset. "
-        "Powered by Gemini 2.5 Flash — free, no GPU needed."
+        "3 analyses per session. Refresh to reset. "
+        "No GPU required — multi-model Gemini API."
     )
+
+    st.divider()
+    with st.expander("🔑 Use your own API key"):
+        st.caption("If the admin key is expired or unavailable, paste your own Gemini API key here.")
+        user_key = st.text_input(
+            "Gemini API Key",
+            type="password",
+            placeholder="Paste your API key",
+            label_visibility="collapsed",
+            key="user_api_key_input",
+        )
+        if user_key:
+            st.session_state.user_api_key = user_key
+            st.success("Custom API key set for this session.")
+        elif "user_api_key" in st.session_state:
+            del st.session_state.user_api_key
 
 
 # ── SQL Parser (shared with inference.py) ────────────────────────────────────
@@ -477,7 +513,7 @@ def build_mermaid_html(mermaid_diagram: str, title: str, sql_source: str = "") -
         <h1 class="title">{safe_title}</h1>
         <p class="subtitle">Premium Mermaid ER diagram with database relationships.</p>
       </div>
-      <div class="badge">Ghost Architect · Gemini 2.5 Flash</div>
+      <div class="badge">Ghost Architect · Gemini API</div>
     </div>
 
     <div class="card">
@@ -588,37 +624,50 @@ def render_schema_cards(tables: list[dict]):
     return True
 
 
-# ── Custom CSS ──────────────────────────────────────────────────────────────────
+# ── Custom CSS (app-specific overrides only) ──────────────────────────────────
 st.markdown("""
 <style>
-    .stApp { background: #ffffff; }
+    .stApp { background: #0a0a0f; }
     .block-container { max-width: 1400px; padding-top: 1rem; }
-    .main-header { text-align: center; padding: 1.5rem 0 0.5rem; }
-    .main-header h1 { font-size: 1.8rem; font-weight: 700; color: #111827; margin: 0; }
-    .main-header p { color: #6b7280; font-size: 0.9rem; margin: 0.25rem 0 0; }
-    .section-title { font-size: 1rem; font-weight: 600; color: #374151; margin-bottom: 0.75rem; }
-    [data-testid="stFileUploader"] { border: 1px solid #d1d5db; border-radius: 8px; padding: 0.5rem; }
-    [data-testid="stFileUploader"]:hover { border-color: #9ca3af; }
-    .stAlert { border-radius: 8px !important; }
-    .ghost-footer { text-align: center; padding: 2rem 1rem 1rem; margin-top: 2rem; border-top: 1px solid #e5e7eb; color: #9ca3af; font-size: 0.8rem; }
-    .ghost-footer a { color: #6b7280; text-decoration: none; }
-    .ghost-footer a:hover { color: #374151; }
-    .ghost-footer .links { display: flex; justify-content: center; gap: 1.5rem; margin-bottom: 0.5rem; flex-wrap: wrap; }
+    .upload-empty { text-align: center; padding: 2rem 1rem; border: 2px dashed #252533; border-radius: 12px; color: #4a4a5e; font-size: 0.9rem; }
+    [data-testid="stFileUploader"] { border: 2px dashed #252533; border-radius: 12px; padding: 0.5rem; transition: all 0.2s; }
+    [data-testid="stFileUploader"]:hover { border-color: #3b82f6; }
+    [data-testid="stFileUploader"] [data-testid="stMarkdownContainer"] p { font-size: 0.9rem; color: #6b6b80; }
+    [data-testid="stCode"] { border-radius: 12px !important; border: 1px solid #252533 !important; }
+    [data-testid="stCode"] pre { background: #0d0d14 !important; }
+    .ghost-footer { text-align: center; padding: 2.5rem 1rem 1rem; margin-top: 3rem; border-top: 1px solid #1a1a24; color: #4a4a5e; font-size: 0.8rem; }
+    .ghost-footer a { color: #6b6b80; text-decoration: none; transition: color 0.2s; }
+    .ghost-footer a:hover { color: #a0a0b5; }
+    .ghost-footer .links { display: flex; justify-content: center; gap: 1.5rem; margin-bottom: 0.75rem; flex-wrap: wrap; }
+    @keyframes shimmer { 0% { transform:translateX(-100%); } 100% { transform:translateX(350%); } }
+    .stMainBlockContainer { padding-top: 0.5rem !important; padding-bottom: 0.5rem !important; padding-left: 2rem !important; padding-right: 2rem !important; }
+    div[data-testid="stVerticalBlock"] { gap: 0.5rem !important; }
+    div[data-testid="stColumn"] { padding-left: 0.25rem !important; padding-right: 0.25rem !important; }
 </style>
 """, unsafe_allow_html=True)
 
 
-# ── Main layout ────────────────────────────────────────────────────────────────
-st.markdown('<div class="main-header"><h1>👻 Ghost Architect</h1><p>UI screenshots → Database schema + ER Diagram</p></div>', unsafe_allow_html=True)
-st.divider()
+# ── Header ─────────────────────────────────────────────────────────────────────
+with st.container(border=True):
+    st.markdown('<h1 style="text-align:center;font-size:2.5rem;font-weight:800;margin:0;color:var(--foreground);">👻 Ghost Architect</h1>', unsafe_allow_html=True)
+    st.markdown('<p style="text-align:center;color:var(--muted-foreground);margin:0.25rem 0 1rem;">Upload UI screenshots → Production-ready database schema + ER Diagram</p>', unsafe_allow_html=True)
+    cols = st.columns(4, gap="small")
+    badge_info = [("Gemini API", True), ("No GPU needed", False), ("Free tier", False), ("Multi-image", False)]
+    for col, (text, dot) in zip(cols, badge_info):
+        with col:
+            if dot:
+                st.markdown(f'<div style="text-align:center;"><span style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.25rem 0.75rem;background:var(--muted);border:1px solid var(--border);border-radius:999px;color:var(--muted-foreground);font-size:0.75rem;font-weight:500;"><span style="width:6px;height:6px;border-radius:50%;background:#3b82f6;display:inline-block;animation:pulse 2s infinite;"></span>{text}</span></div>', unsafe_allow_html=True)
+            else:
+                st.markdown(f'<div style="text-align:center;"><span style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.25rem 0.75rem;background:var(--muted);border:1px solid var(--border);border-radius:999px;color:var(--muted-foreground);font-size:0.75rem;font-weight:500;">{text}</span></div>', unsafe_allow_html=True)
 
+# ── Main layout ────────────────────────────────────────────────────────────────
 col_upload, col_schema = st.columns([1, 1], gap="large")
 
 with col_upload:
-    st.markdown('<p class="section-title"><strong>1. Upload Screenshots</strong></p>', unsafe_allow_html=True)
+    st.markdown(f'<p style="font-size:1.1rem;font-weight:700;color:var(--foreground);margin-bottom:1rem;"><span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:8px;background:#2563eb;color:white;font-size:0.75rem;font-weight:700;margin-right:0.5rem;">1</span> Upload Screenshots</p>', unsafe_allow_html=True)
 
     uploaded_files = st.file_uploader(
-        "Upload 3-6 PNG/JPG screenshots from the same product",
+        "Upload screenshots (PNG / JPG)",
         type=["png", "jpg", "jpeg"],
         accept_multiple_files=True,
         label_visibility="collapsed",
@@ -627,31 +676,39 @@ with col_upload:
     if uploaded_files:
         count = len(uploaded_files)
         if count >= MIN_REQUIRED_IMAGES:
-            st.success(f"{count} screenshots uploaded")
+            facade.Alert(f"{count} screenshots uploaded", variant="success")
         else:
-            st.warning(f"Need {MIN_REQUIRED_IMAGES - count} more screenshot{'s' if MIN_REQUIRED_IMAGES - count != 1 else ''}")
-        if count > MAX_RECOMMENDED_IMAGES:
-            st.caption(f"{MAX_RECOMMENDED_IMAGES} is the sweet spot. You can continue with {count}.")
+            facade.Alert(f"Need at least {MIN_REQUIRED_IMAGES} screenshots ({count} uploaded)", variant="warning")
 
-        for f in uploaded_files:
-            img = PIL.Image.open(io.BytesIO(f.getvalue())).convert("RGB")
-            st.image(img, use_container_width=True)
+        if count > MAX_RECOMMENDED_IMAGES:
+            facade.Alert(f"{MAX_RECOMMENDED_IMAGES} screenshots is the sweet spot. You can continue with {count}.", variant="info")
+
+        rows = (count + 2) // 3
+        for row in range(rows):
+            row_files = uploaded_files[row * 3 : (row + 1) * 3]
+            cols = st.columns(len(row_files))
+            for ci, (col, f) in enumerate(zip(cols, row_files)):
+                with col:
+                    st.image(PIL.Image.open(io.BytesIO(f.getvalue())).convert("RGB"), use_container_width=True)
+                    st.markdown(f'<p style="font-size:0.7rem;color:var(--muted-foreground);text-align:center;margin-top:-0.3rem;">{f.name[:20]}{"..." if len(f.name) > 20 else ""}</p>', unsafe_allow_html=True)
+    else:
+        st.markdown('<div class="upload-empty">Drop screenshots here</div>', unsafe_allow_html=True)
 
 with col_schema:
-    st.markdown('<p class="section-title"><strong>2. Generated Schema</strong></p>', unsafe_allow_html=True)
+    st.markdown(f'<p style="font-size:1.1rem;font-weight:700;color:var(--foreground);margin-bottom:1rem;"><span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:8px;background:#2563eb;color:white;font-size:0.75rem;font-weight:700;margin-right:0.5rem;">2</span> Generated Schema</p>', unsafe_allow_html=True)
 
     if not uploaded_files:
-        st.info("Upload screenshots on the left to generate a schema")
+        facade.Alert("Upload screenshots on the left to generate a schema", variant="info")
     elif len(uploaded_files) < MIN_REQUIRED_IMAGES:
-        st.info(f"Upload {MIN_REQUIRED_IMAGES - len(uploaded_files)} more screenshot{'s' if MIN_REQUIRED_IMAGES - len(uploaded_files) != 1 else ''} to enable generation")
+        facade.Alert(f"Upload {MIN_REQUIRED_IMAGES - len(uploaded_files)} more screenshot{'s' if MIN_REQUIRED_IMAGES - len(uploaded_files) != 1 else ''} for precise schema generation", variant="info")
     else:
-        generate_btn = st.button("Generate Schema", type="primary", use_container_width=True)
+        generate_btn = facade.Button("Generate Schema", variant="default", size="lg", icon="sparkle", key="generate_btn")
 
         if generate_btn:
             if "request_count" not in st.session_state:
                 st.session_state.request_count = 0
             if st.session_state.request_count >= 3:
-                st.warning("You've used 3 free analyses this session. Refresh to continue.")
+                facade.Alert("You've used 3 free analyses this session. Refresh to continue.", variant="warning")
                 st.stop()
 
             pil_images = []
@@ -661,43 +718,50 @@ with col_schema:
                     img = img.convert("RGB")
                 pil_images.append(img)
 
-            with st.spinner("Analyzing screenshots..."):
-                try:
-                    raw_output, model_used = analyze_screenshots(pil_images, dialect)
-                    st.session_state.request_count += 1
-                except Exception as e:
-                    err_str = str(e)
-                    if "API_KEY_INVALID" in err_str or "PERMISSION_DENIED" in err_str or "UNAUTHENTICATED" in err_str:
-                        st.error("Gemini API key is invalid or expired. Admin must update it.")
-                    elif "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
-                        st.error("API rate limit reached. Wait a moment and try again.")
-                    elif "503" in err_str or "UNAVAILABLE" in err_str:
-                        st.error("Gemini service is temporarily unavailable. Try again in a few seconds.")
-                    else:
-                        st.error(f"Analysis failed: {err_str}")
-                    st.stop()
+            status_ph = st.empty()
+            status_ph.markdown(f'<div style="text-align:center;padding:2rem;"><p style="color:var(--muted-foreground);margin-top:0.75rem;">Analyzing UI evidence across all screenshots...</p><div style="width:100%;height:4px;background:#1a1a24;border-radius:4px;margin-top:1rem;overflow:hidden;"><div style="width:40%;height:100%;background:#2563eb;border-radius:4px;animation:shimmer 1.5s infinite;"></div></div></div>', unsafe_allow_html=True)
 
+            try:
+                raw_output, model_used = analyze_screenshots(pil_images, dialect)
+                st.session_state.request_count += 1
+            except Exception as e:
+                err_str = str(e)
+                if "denied access" in err_str or "PERMISSION_DENIED" in err_str:
+                    facade.Alert(f"Google Cloud project denied access. Get a new API key from a different project at https://aistudio.google.com.\n\nError: {err_str[:200]}", variant="error", title="Access denied")
+                elif "API_KEY_INVALID" in err_str or "UNAUTHENTICATED" in err_str:
+                    facade.Alert("Gemini API key is invalid or expired. Get a new one at https://aistudio.google.com.", variant="error", title="Key invalid")
+                elif "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+                    facade.Alert("API rate limit reached. Wait a moment and try again.", variant="warning", title="Rate limited")
+                elif "503" in err_str or "UNAVAILABLE" in err_str:
+                    facade.Alert("Gemini service is temporarily unavailable. Try again in a few seconds.", variant="error", title="Service unavailable")
+                else:
+                    facade.Alert(f"Analysis failed: {err_str}", variant="error")
+                status_ph.empty()
+                st.stop()
+
+            status_ph.empty()
             parsed = split_consolidated_output(raw_output)
-            st.caption(f"Generated by {model_used} · {len(uploaded_files)} screenshots")
+            st.session_state.last_mermaid = parsed["mermaid"]
+            st.session_state.last_sql = parsed["sql"]
+            st.session_state.last_model = model_used
+            st.markdown(f'<p style="color:var(--muted-foreground);font-size:0.75rem;margin:0 0 0.75rem;">Generated by {model_used} · {len(uploaded_files)} screenshots analyzed</p>', unsafe_allow_html=True)
 
             if parsed["explanation"]:
-                st.info(parsed["explanation"])
+                with st.container(border=True):
+                    st.markdown(f'<p style="color:var(--muted-foreground);font-size:0.85rem;margin:0;"><strong style="color:var(--foreground);">Design decisions:</strong> {parsed["explanation"]}</p>', unsafe_allow_html=True)
 
-            tab_vis, tab_sql = st.tabs(["ER Diagram", "SQL Schema"])
+            tab_vis, tab_sql = facade.Tabs(["ER Diagram", "SQL Schema"])
 
             with tab_vis:
                 if parsed["mermaid"]:
-                    st.components.v1.html(
-                        build_mermaid_html(parsed["mermaid"], "Ghost Architect: Database Schema", parsed["sql"] or ""),
-                        height=900, scrolling=True,
-                    )
-                elif parsed["sql"]:
-                    parsed_tables = parse_create_tables(parsed["sql"])
-                    if parsed_tables:
-                        render_schema_cards(parsed_tables)
-                    st.info("Mermaid diagram not available.")
+                    st.caption("Entity Relationship Diagram")
+                    st.components.v1.html(build_mermaid_html(parsed["mermaid"], "Ghost Architect: Database Schema", parsed["sql"] or ""), height=900, scrolling=True)
                 else:
-                    st.code(raw_output, language="text")
+                    if parsed["sql"]:
+                        parsed_tables = parse_create_tables(parsed["sql"])
+                        if parsed_tables:
+                            render_schema_cards(parsed_tables)
+                    facade.Alert("Mermaid diagram not available. Showing SQL below.", variant="info")
 
             with tab_sql:
                 if parsed["sql"]:
@@ -706,7 +770,7 @@ with col_schema:
                     st.code(raw_output, language="text")
 
             if parsed["sql"] or parsed["mermaid"]:
-                st.markdown("---")
+                facade.Separator()
                 dl_col1, dl_col2, dl_col3 = st.columns(3)
                 if parsed["sql"]:
                     dl_col1.download_button("Download SQL", data=parsed["sql"], file_name="ghost_architect_schema.sql", mime="text/plain", use_container_width=True)
@@ -722,14 +786,34 @@ with col_schema:
                     render_schema_cards(parsed_tables)
 
 
+# ── Full-width diagram viewer ─────────────────────────────────────────────────
+if st.session_state.get("last_mermaid"):
+    st.markdown("---")
+    col_left, col_right = st.columns([3, 1])
+    with col_left:
+        st.markdown(f"**📊 Full Diagram — {st.session_state.get('last_model', '')}**")
+    with col_right:
+        if st.button("🖼️ Toggle Full Size", key="toggle_full_diagram", use_container_width=True):
+            st.session_state.show_full = not st.session_state.get("show_full", False)
+    if st.session_state.get("show_full", False):
+        st.components.v1.html(
+            build_mermaid_html(
+                st.session_state.last_mermaid,
+                "Ghost Architect: Database Schema",
+                st.session_state.get("last_sql", ""),
+            ),
+            height=1200,
+            scrolling=True,
+        )
+
 # ── Footer ─────────────────────────────────────────────────────────────────────
 st.markdown("""
 <div class="ghost-footer">
     <div class="links">
-        <a href="https://github.com/HarshilMaks/ghost_architect_gemma3">GitHub</a>
-        <a href="https://huggingface.co/harshilmaks/ghost-architect-gemma3-adapter">HuggingFace</a>
-        <a href="https://aistudio.google.com">Gemini API</a>
+        <a href="https://github.com/HarshilMaks/ghost_architect_gemma3" target="_blank">GitHub</a>
+        <a href="https://huggingface.co/harshilmaks/ghost-architect-gemma3-adapter" target="_blank">HuggingFace Model</a>
+        <a href="https://aistudio.google.com" target="_blank">Gemini API</a>
     </div>
-    <p>Ghost Architect · Apache 2.0</p>
+    <p>Ghost Architect · Gemini API · MIT</p>
 </div>
 """, unsafe_allow_html=True)

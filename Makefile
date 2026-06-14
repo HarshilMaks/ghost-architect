@@ -1,6 +1,6 @@
 .PHONY: help install app test-inference deploy-check clean
 
-PYTHON := python3
+PYTHON := .venv/bin/python3
 UV := uv
 STREAMLIT_PORT := 8501
 

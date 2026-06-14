@@ -58,4 +58,4 @@ The fine-tuned adapter is a proof of ML engineering capability. The live demo us
 
 ## License
 
-Apache 2.0
+MIT

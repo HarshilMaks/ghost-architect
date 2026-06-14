@@ -2,7 +2,7 @@
 
 ## ⚠️ Critical: Never Commit API Keys to GitHub
 
-Your project contains scripts that use external APIs (Google Gemini). **Never commit your actual API keys.**
+The project uses the Google Gemini API. **Never commit your actual API keys.**
 
 ---
 
@@ -35,10 +35,10 @@ GEMINI_API_KEY=your_actual_gemini_api_key_here
 ### 4. Verify Setup
 ```bash
 # Test that your script can load the API key
-uv run python src/synthetic_generator.py
+uv run streamlit run src/app.py
 ```
 
-If successful, you'll see: `Found X screenshots. Starting extraction...`
+If successful, the app will open in your browser.
 
 ---
 
@@ -68,7 +68,7 @@ ghost_architect_gemma3/
 ├── .env.example         # ✅ Template (safe to commit)
 ├── .gitignore           # Already includes .env
 └── src/
-    └── synthetic_generator.py  # Loads from .env
+    └── app.py                  # Loads from secrets
 ```
 
 ---
@@ -138,5 +138,5 @@ GitHub automatically scans for exposed credentials:
 
 See:
 - `.env.example` — Template for all required keys
-- `src/synthetic_generator.py` — Example of secure API loading
+- `src/app.py` — Secure API loading via `st.secrets`
 - `requirements.txt` — python-dotenv package details
