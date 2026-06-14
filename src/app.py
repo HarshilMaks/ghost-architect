@@ -119,32 +119,29 @@ def analyze_screenshots(pil_images: list, dialect: str = "PostgreSQL") -> tuple[
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown(
-        '<p style="font-size:1.2rem;font-weight:700;color:#E2E8F0;margin:0 0 0.1rem;">'
+        '<p style="font-size:1.3rem;font-weight:700;color:#E2E8F0;margin:0 0 0.75rem;">'
         '👻 Ghost Architect</p>',
         unsafe_allow_html=True,
     )
-    st.markdown(
-        '<p style="font-size:0.8rem;color:#6B6B80;margin:0 0 1rem;">'
-        'UI Screenshots \u2192 Database Schema</p>',
-        unsafe_allow_html=True,
-    )
-
-    st.divider()
 
     st.markdown(
-        '<p style="font-size:0.85rem;font-weight:600;color:#CBD5E1;margin:0 0 0.5rem;">'
+        '<p style="font-size:0.9rem;font-weight:600;color:#CBD5E1;margin:0 0 0.5rem;">'
         'How it works</p>',
         unsafe_allow_html=True,
     )
     st.markdown(
-        '<p style="font-size:0.8rem;color:#8A8A9E;line-height:1.6;margin:0;">'
-        '1. Upload 3\u20136 UI screenshots (list view, form, detail)<br>'
-        '2. Select your target SQL dialect<br>'
+        '<p style="font-size:0.85rem;color:#8A8A9E;line-height:1.7;margin:0;">'
+        '1. Upload 3\u20136 UI screenshots (list, form, detail)<br>'
+        '2. Choose your SQL dialect<br>'
         '3. Click Generate Schema<br>'
-        '4. Review ER diagram, SQL, and download</p>',
+        '4. Review ER diagram + SQL</p>',
         unsafe_allow_html=True,
     )
-    st.caption("3 analyses per session \u00b7 No GPU required")
+    st.markdown(
+        '<p style="font-size:0.75rem;color:#6B6B80;margin:0.5rem 0 0;">'
+        '3 analyses per session \u00b7 No GPU required</p>',
+        unsafe_allow_html=True,
+    )
 
     st.divider()
 
