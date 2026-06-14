@@ -2,6 +2,8 @@
 
 Upload UI screenshots → PostgreSQL schema + Mermaid ER diagram via Gemini API. No GPU needed.
 
+[Live Demo →](https://gharchitect.streamlit.app/)
+
 ## What it does
 
 Upload 3–6 screenshots of a web application. Ghost Architect analyzes all screens together and generates:
