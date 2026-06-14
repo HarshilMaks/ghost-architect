@@ -715,12 +715,12 @@ with col_upload:
         st.markdown('<div class="upload-empty">Drop screenshots here</div>', unsafe_allow_html=True)
 
 with col_schema:
-    st.markdown(f'<p style="font-size:1.1rem;font-weight:700;color:#E2E8F0;margin-bottom:1rem;"><span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:8px;background:#2563eb;color:white;font-size:0.75rem;font-weight:700;margin-right:0.5rem;">2</span> Generated Schema</p>', unsafe_allow_html=True)
-
     if not uploaded_files:
-        st.info("Upload screenshots on the left to generate a schema", icon="📸")
+        st.markdown(f'<p style="font-size:1.1rem;font-weight:700;color:#E2E8F0;margin-bottom:1rem;"><span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:8px;background:#2563eb;color:white;font-size:0.75rem;font-weight:700;margin-right:0.5rem;">2</span> Generated Schema</p>', unsafe_allow_html=True)
+        st.info("Upload screenshots on the left", icon="📸")
     elif len(uploaded_files) < MIN_REQUIRED_IMAGES:
-        st.info(f"Upload {MIN_REQUIRED_IMAGES - len(uploaded_files)} more screenshot{'s' if MIN_REQUIRED_IMAGES - len(uploaded_files) != 1 else ''} for precise schema generation", icon="📸")
+        st.markdown(f'<p style="font-size:1.1rem;font-weight:700;color:#E2E8F0;margin-bottom:1rem;"><span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:8px;background:#2563eb;color:white;font-size:0.75rem;font-weight:700;margin-right:0.5rem;">2</span> Generated Schema</p>', unsafe_allow_html=True)
+        st.info(f"Upload {MIN_REQUIRED_IMAGES - len(uploaded_files)} more screenshot{'s' if MIN_REQUIRED_IMAGES - len(uploaded_files) != 1 else ''}", icon="📸")
 
 
 # ── Generate button (full width) ──────────────────────────────────────────────
