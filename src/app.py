@@ -640,7 +640,7 @@ def render_schema_cards(tables: list[dict]):
 st.markdown("""
 <style>
     .stApp { background: #0a0a0f; }
-    .block-container { max-width: 1100px; padding: 1.5rem 1rem !important; }
+    .block-container { max-width: 1100px; padding: 2rem 1rem 1.5rem !important; }
     .upload-empty { text-align: center; padding: 1.5rem 1rem; border: 2px dashed #252533; border-radius: 12px; color: #4a4a5e; font-size: 1rem; }
     [data-testid="stFileUploader"] { border: 2px dashed #252533; border-radius: 12px; padding: 0.5rem; transition: all 0.2s; }
     [data-testid="stFileUploader"]:hover { border-color: #3b82f6; }
@@ -671,7 +671,7 @@ st.markdown("""
 # ── Header ─────────────────────────────────────────────────────────────────────
 st.markdown(
     '<h1 style="text-align:center;font-size:2rem;font-weight:700;'
-    'margin:0 0 0.1rem;color:#E2E8F0;">👻 Ghost Architect</h1>',
+    'margin:0.75rem 0 0.1rem;color:#E2E8F0;">👻 Ghost Architect</h1>',
     unsafe_allow_html=True,
 )
 st.markdown(
