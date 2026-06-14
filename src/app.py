@@ -631,7 +631,7 @@ def render_schema_cards(tables: list[dict]):
 st.markdown("""
 <style>
     .stApp { background: #0a0a0f; }
-    .block-container { max-width: 1400px; padding-top: 1rem; }
+    .block-container { max-width: 1400px; }
     .upload-empty { text-align: center; padding: 2rem 1rem; border: 2px dashed #252533; border-radius: 12px; color: #4a4a5e; font-size: 0.9rem; }
     [data-testid="stFileUploader"] { border: 2px dashed #252533; border-radius: 12px; padding: 0.5rem; transition: all 0.2s; }
     [data-testid="stFileUploader"]:hover { border-color: #3b82f6; }
@@ -643,10 +643,8 @@ st.markdown("""
     .ghost-footer a:hover { color: #a0a0b5; }
     .ghost-footer .links { display: flex; justify-content: center; gap: 1.5rem; margin-bottom: 0.75rem; flex-wrap: wrap; }
     @keyframes shimmer { 0% { transform:translateX(-100%); } 100% { transform:translateX(350%); } }
-    .stMainBlockContainer { padding-top: 0.5rem !important; padding-bottom: 0.5rem !important; padding-left: 2rem !important; padding-right: 2rem !important; }
-    div[data-testid="stVerticalBlock"] { gap: 0.5rem !important; }
-    div[data-testid="stColumn"] { padding-left: 0.25rem !important; padding-right: 0.25rem !important; }
-    div[data-testid="stButton"] button { width: 100% !important; font-size: 1.05rem !important; padding: 0.5rem 1rem !important; }
+    div[data-testid="stButton"] button { width: 100% !important; font-size: 1.1rem !important; padding: 0.6rem 1rem !important; font-weight: 600 !important; }
+    section[data-testid="stSidebar"] { width: 280px !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -654,13 +652,13 @@ st.markdown("""
 # ── Header ─────────────────────────────────────────────────────────────────────
 with st.container(border=True):
     st.markdown(
-        '<h1 style="text-align:center;font-size:2.5rem;font-weight:800;'
-        'margin:0;padding:0.5rem 0 0;color:#E2E8F0;">👻 Ghost Architect</h1>',
+        '<h1 style="text-align:center;font-size:2rem;font-weight:700;'
+        'margin:0.75rem 0 0.25rem;color:#E2E8F0;">👻 Ghost Architect</h1>',
         unsafe_allow_html=True,
     )
     st.markdown(
-        '<p style="text-align:center;color:#8A8A9E;margin:0 0 1.25rem;font-size:0.95rem;">'
-        'Upload UI screenshots \u2192 Production-ready PostgreSQL Schema + ER Diagram</p>',
+        '<p style="text-align:center;color:#8A8A9E;margin:0 0 1.25rem;font-size:0.9rem;">'
+        'Upload UI screenshots \u2192 PostgreSQL Schema + ER Diagram</p>',
         unsafe_allow_html=True,
     )
     badge_cols = st.columns(4, gap="small")
