@@ -666,8 +666,8 @@ with st.container(border=True):
     badge_data = [
         ("\u2726", "Gemini API"),
         ("\u26A1", "No GPU"),
-        ("\uD83C\uDFAF", "Free tier"),
-        ("\uD83D\uDCF7", "Multi-image"),
+        ("\u25C9", "Free tier"),
+        ("\u25A0", "Multi-image"),
     ]
     for col, (icon, label) in zip(badge_cols, badge_data):
         with col:
