@@ -650,39 +650,22 @@ st.markdown("""
 
 
 # ── Header ─────────────────────────────────────────────────────────────────────
-with st.container(border=True):
-    st.markdown(
-        '<h1 style="text-align:center;font-size:2rem;font-weight:700;'
-        'margin:0.75rem 0 0.25rem;color:#E2E8F0;">👻 Ghost Architect</h1>',
-        unsafe_allow_html=True,
-    )
-    st.markdown(
-        '<p style="text-align:center;color:#8A8A9E;margin:0 0 1.25rem;font-size:0.9rem;">'
-        'Upload UI screenshots \u2192 PostgreSQL Schema + ER Diagram</p>',
-        unsafe_allow_html=True,
-    )
-    badge_cols = st.columns(4, gap="small")
-    badge_data = [
-        ("\u2726", "Gemini API"),
-        ("\u26A1", "No GPU"),
-        ("\u25C9", "Free tier"),
-        ("\u25A0", "Multi-image"),
-    ]
-    for col, (icon, label) in zip(badge_cols, badge_data):
-        with col:
-            st.markdown(
-                f'<p style="text-align:center;font-size:0.8rem;color:#CBD5E1;'
-                f'margin:0;padding:0.4rem 0.3rem;border:1px solid #2A2A3A;'
-                f'border-radius:999px;background:#151520;">'
-                f'{icon} {label}</p>',
-                unsafe_allow_html=True,
-            )
+st.markdown(
+    '<h1 style="text-align:center;font-size:1.8rem;font-weight:700;'
+    'margin:1rem 0 0.15rem;color:#E2E8F0;">👻 Ghost Architect</h1>',
+    unsafe_allow_html=True,
+)
+st.markdown(
+    '<p style="text-align:center;color:#8A8A9E;margin:0 0 1.25rem;font-size:0.9rem;">'
+    'UI screenshots \u2192 PostgreSQL Schema + ER Diagram</p>',
+    unsafe_allow_html=True,
+)
 
 # ── Main layout ────────────────────────────────────────────────────────────────
 col_upload, col_schema = st.columns([1, 1], gap="large")
 
 with col_upload:
-    st.markdown(f'<p style="font-size:1.1rem;font-weight:700;color:#E2E8F0;margin-bottom:1rem;"><span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:8px;background:#2563eb;color:white;font-size:0.75rem;font-weight:700;margin-right:0.5rem;">1</span> Upload Screenshots</p>', unsafe_allow_html=True)
+    st.markdown('<p style="font-size:1.1rem;font-weight:700;color:#E2E8F0;margin-bottom:1rem;">1. Upload Screenshots</p>', unsafe_allow_html=True)
 
     uploaded_files = st.file_uploader(
         "Upload screenshots (PNG / JPG)",
@@ -714,10 +697,10 @@ with col_upload:
 
 with col_schema:
     if not uploaded_files:
-        st.markdown(f'<p style="font-size:1.1rem;font-weight:700;color:#E2E8F0;margin-bottom:1rem;"><span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:8px;background:#2563eb;color:white;font-size:0.75rem;font-weight:700;margin-right:0.5rem;">2</span> Generated Schema</p>', unsafe_allow_html=True)
+        st.markdown('<p style="font-size:1.1rem;font-weight:700;color:#E2E8F0;margin-bottom:1rem;">2. Generated Schema</p>', unsafe_allow_html=True)
         st.info("Upload screenshots on the left", icon="📸")
     elif len(uploaded_files) < MIN_REQUIRED_IMAGES:
-        st.markdown(f'<p style="font-size:1.1rem;font-weight:700;color:#E2E8F0;margin-bottom:1rem;"><span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:8px;background:#2563eb;color:white;font-size:0.75rem;font-weight:700;margin-right:0.5rem;">2</span> Generated Schema</p>', unsafe_allow_html=True)
+        st.markdown('<p style="font-size:1.1rem;font-weight:700;color:#E2E8F0;margin-bottom:1rem;">2. Generated Schema</p>', unsafe_allow_html=True)
         st.info(f"Upload {MIN_REQUIRED_IMAGES - len(uploaded_files)} more screenshot{'s' if MIN_REQUIRED_IMAGES - len(uploaded_files) != 1 else ''}", icon="📸")
 
 
