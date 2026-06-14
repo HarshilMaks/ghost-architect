@@ -721,89 +721,92 @@ with col_schema:
         st.info("Upload screenshots on the left to generate a schema", icon="📸")
     elif len(uploaded_files) < MIN_REQUIRED_IMAGES:
         st.info(f"Upload {MIN_REQUIRED_IMAGES - len(uploaded_files)} more screenshot{'s' if MIN_REQUIRED_IMAGES - len(uploaded_files) != 1 else ''} for precise schema generation", icon="📸")
-    else:
-        generate_btn = st.button("✦ Generate Schema", type="primary", use_container_width=True, key="generate_btn")
 
-        if generate_btn:
-            if "request_count" not in st.session_state:
-                st.session_state.request_count = 0
-            if st.session_state.request_count >= 3:
-                st.warning("You've used 3 free analyses this session. Refresh to continue.")
-                st.stop()
 
-            pil_images = []
-            for f in uploaded_files:
-                img = PIL.Image.open(io.BytesIO(f.getvalue()))
-                if img.mode != "RGB":
-                    img = img.convert("RGB")
-                pil_images.append(img)
+# ── Generate button (full width) ──────────────────────────────────────────────
+if uploaded_files and len(uploaded_files) >= MIN_REQUIRED_IMAGES:
+    generate_btn = st.button("✨ Generate Schema", type="primary", use_container_width=True, key="generate_btn")
 
-            status_ph = st.empty()
-            status_ph.markdown(f'<div style="text-align:center;padding:2rem;"><p style="color:#8A8A9E;margin-top:0.75rem;">Analyzing UI evidence across all screenshots...</p><div style="width:100%;height:4px;background:#1a1a24;border-radius:4px;margin-top:1rem;overflow:hidden;"><div style="width:40%;height:100%;background:#2563eb;border-radius:4px;animation:shimmer 1.5s infinite;"></div></div></div>', unsafe_allow_html=True)
+    if generate_btn:
+        if "request_count" not in st.session_state:
+            st.session_state.request_count = 0
+        if st.session_state.request_count >= 3:
+            st.warning("You've used 3 free analyses this session. Refresh to continue.")
+            st.stop()
 
-            try:
-                raw_output, model_used = analyze_screenshots(pil_images, dialect)
-                st.session_state.request_count += 1
-            except Exception as e:
-                err_str = str(e)
-                if "denied access" in err_str or "PERMISSION_DENIED" in err_str:
-                    st.error(f"Google Cloud project denied access. Get a new API key from a different project at https://aistudio.google.com.\n\n{err_str[:200]}")
-                elif "API_KEY_INVALID" in err_str or "UNAUTHENTICATED" in err_str:
-                    st.error("Gemini API key is invalid or expired. Get a new one at https://aistudio.google.com.")
-                elif "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
-                    st.warning("API rate limit reached. Wait a moment and try again.")
-                elif "503" in err_str or "UNAVAILABLE" in err_str:
-                    st.error("Gemini service is temporarily unavailable. Try again in a few seconds.")
-                else:
-                    st.error(f"Analysis failed: {err_str}")
-                status_ph.empty()
-                st.stop()
+        pil_images = []
+        for f in uploaded_files:
+            img = PIL.Image.open(io.BytesIO(f.getvalue()))
+            if img.mode != "RGB":
+                img = img.convert("RGB")
+            pil_images.append(img)
 
+        status_ph = st.empty()
+        status_ph.markdown(f'<div style="text-align:center;padding:2rem;"><p style="color:#8A8A9E;margin-top:0.75rem;">Analyzing UI evidence across all screenshots...</p><div style="width:100%;height:4px;background:#1a1a24;border-radius:4px;margin-top:1rem;overflow:hidden;"><div style="width:40%;height:100%;background:#2563eb;border-radius:4px;animation:shimmer 1.5s infinite;"></div></div></div>', unsafe_allow_html=True)
+
+        try:
+            raw_output, model_used = analyze_screenshots(pil_images, dialect)
+            st.session_state.request_count += 1
+        except Exception as e:
+            err_str = str(e)
+            if "denied access" in err_str or "PERMISSION_DENIED" in err_str:
+                st.error(f"Google Cloud project denied access. Get a new API key from a different project at https://aistudio.google.com.\n\n{err_str[:200]}")
+            elif "API_KEY_INVALID" in err_str or "UNAUTHENTICATED" in err_str:
+                st.error("Gemini API key is invalid or expired. Get a new one at https://aistudio.google.com.")
+            elif "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+                st.warning("API rate limit reached. Wait a moment and try again.")
+            elif "503" in err_str or "UNAVAILABLE" in err_str:
+                st.error("Gemini service is temporarily unavailable. Try again in a few seconds.")
+            else:
+                st.error(f"Analysis failed: {err_str}")
             status_ph.empty()
-            parsed = split_consolidated_output(raw_output)
-            st.session_state.last_mermaid = parsed["mermaid"]
-            st.session_state.last_sql = parsed["sql"]
-            st.session_state.last_model = model_used
-            st.markdown(f'<p style="color:#8A8A9E;font-size:0.75rem;margin:0 0 0.75rem;">Generated by {model_used} · {len(uploaded_files)} screenshots analyzed</p>', unsafe_allow_html=True)
+            st.stop()
 
-            if parsed["explanation"]:
-                with st.container(border=True):
-                    st.markdown(f'<p style="color:#8A8A9E;font-size:0.85rem;margin:0;"><strong style="color:#E2E8F0;">Design decisions:</strong> {parsed["explanation"]}</p>', unsafe_allow_html=True)
+        status_ph.empty()
+        parsed = split_consolidated_output(raw_output)
+        st.session_state.last_mermaid = parsed["mermaid"]
+        st.session_state.last_sql = parsed["sql"]
+        st.session_state.last_model = model_used
+        st.markdown(f'<p style="color:#8A8A9E;font-size:0.75rem;margin:0 0 0.75rem;">Generated by {model_used} · {len(uploaded_files)} screenshots analyzed</p>', unsafe_allow_html=True)
 
-            tab_vis, tab_sql = st.tabs(["ER Diagram", "SQL Schema"])
+        if parsed["explanation"]:
+            with st.container(border=True):
+                st.markdown(f'<p style="color:#8A8A9E;font-size:0.85rem;margin:0;"><strong style="color:#E2E8F0;">Design decisions:</strong> {parsed["explanation"]}</p>', unsafe_allow_html=True)
 
-            with tab_vis:
-                if parsed["mermaid"]:
-                    st.caption("Entity Relationship Diagram")
-                    st.components.v1.html(build_mermaid_html(parsed["mermaid"], "Ghost Architect: Database Schema", parsed["sql"] or ""), height=900, scrolling=True)
-                else:
-                    if parsed["sql"]:
-                        parsed_tables = parse_create_tables(parsed["sql"])
-                        if parsed_tables:
-                            render_schema_cards(parsed_tables)
-                    st.info("Mermaid diagram not available. Showing SQL below.")
+        tab_vis, tab_sql = st.tabs(["ER Diagram", "SQL Schema"])
 
-            with tab_sql:
+        with tab_vis:
+            if parsed["mermaid"]:
+                st.caption("Entity Relationship Diagram")
+                st.components.v1.html(build_mermaid_html(parsed["mermaid"], "Ghost Architect: Database Schema", parsed["sql"] or ""), height=900, scrolling=True)
+            else:
                 if parsed["sql"]:
-                    st.code(parsed["sql"], language="sql")
-                else:
-                    st.code(raw_output, language="text")
+                    parsed_tables = parse_create_tables(parsed["sql"])
+                    if parsed_tables:
+                        render_schema_cards(parsed_tables)
+                st.info("Mermaid diagram not available. Showing SQL below.")
 
-            if parsed["sql"] or parsed["mermaid"]:
-                st.divider()
-                dl_col1, dl_col2, dl_col3 = st.columns(3)
-                if parsed["sql"]:
-                    dl_col1.download_button("Download SQL", data=parsed["sql"], file_name="ghost_architect_schema.sql", mime="text/plain", use_container_width=True)
-                if parsed["mermaid"]:
-                    dl_col2.download_button("Download Mermaid", data=parsed["mermaid"], file_name="ghost_architect_schema.mmd", mime="text/plain", use_container_width=True)
-                if parsed["sql"] and parsed["mermaid"]:
-                    report = f"# Ghost Architect — Database Schema\n\n## Design Decisions\n{parsed.get('explanation', 'N/A')}\n\n## ER Diagram\n```mermaid\n{parsed['mermaid']}\n```\n\n## DDL\n```sql\n{parsed['sql']}\n```\n"
-                    dl_col3.download_button("Download Report (.md)", data=report, file_name="ghost_architect_schema_report.md", mime="text/markdown", use_container_width=True)
+        with tab_sql:
+            if parsed["sql"]:
+                st.code(parsed["sql"], language="sql")
+            else:
+                st.code(raw_output, language="text")
 
-            if not parsed["mermaid"] and not parsed["sql"]:
-                parsed_tables = parse_create_tables(raw_output)
-                if parsed_tables:
-                    render_schema_cards(parsed_tables)
+        if parsed["sql"] or parsed["mermaid"]:
+            st.divider()
+            dl_col1, dl_col2, dl_col3 = st.columns(3)
+            if parsed["sql"]:
+                dl_col1.download_button("Download SQL", data=parsed["sql"], file_name="ghost_architect_schema.sql", mime="text/plain", use_container_width=True)
+            if parsed["mermaid"]:
+                dl_col2.download_button("Download Mermaid", data=parsed["mermaid"], file_name="ghost_architect_schema.mmd", mime="text/plain", use_container_width=True)
+            if parsed["sql"] and parsed["mermaid"]:
+                report = f"# Ghost Architect — Database Schema\n\n## Design Decisions\n{parsed.get('explanation', 'N/A')}\n\n## ER Diagram\n```mermaid\n{parsed['mermaid']}\n```\n\n## DDL\n```sql\n{parsed['sql']}\n```\n"
+                dl_col3.download_button("Download Report (.md)", data=report, file_name="ghost_architect_schema_report.md", mime="text/markdown", use_container_width=True)
+
+        if not parsed["mermaid"] and not parsed["sql"]:
+            parsed_tables = parse_create_tables(raw_output)
+            if parsed_tables:
+                render_schema_cards(parsed_tables)
 
 
 # ── Full-width diagram viewer ─────────────────────────────────────────────────
