@@ -658,6 +658,12 @@ st.markdown("""
     .stTabs { margin-top: 0 !important; }
     .stTabs [data-baseweb="tab-list"] { gap: 0.5rem !important; }
     .stTabs [data-baseweb="tab"] { font-size: 0.85rem !important; }
+    @media (max-width: 768px) {
+        section[data-testid="stSidebar"] { width: 100% !important; }
+        .block-container { padding: 0.75rem 0.5rem !important; }
+        h1 { font-size: 1.5rem !important; }
+        div[data-testid="stButton"] button { font-size: 1rem !important; }
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -744,9 +750,9 @@ if uploaded_files and len(uploaded_files) >= MIN_REQUIRED_IMAGES:
         except Exception as e:
             err_str = str(e)
             if "denied access" in err_str or "PERMISSION_DENIED" in err_str:
-                st.error(f"Google Cloud project denied access. Get a new API key from a different project at https://aistudio.google.com.\n\n{err_str[:200]}")
+                st.error(f"Google Cloud project denied access. Use the sidebar to paste your own Gemini API key, or get a new key from a different project at https://aistudio.google.com.\n\n{err_str[:200]}")
             elif "API_KEY_INVALID" in err_str or "UNAUTHENTICATED" in err_str:
-                st.error("Gemini API key is invalid or expired. Get a new one at https://aistudio.google.com.")
+                st.error("Gemini API key is invalid or expired. Paste your own key in the sidebar, or get a new one at https://aistudio.google.com.")
             elif "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
                 st.warning("API rate limit reached. Wait a moment and try again.")
             elif "503" in err_str or "UNAVAILABLE" in err_str:
