@@ -119,28 +119,20 @@ def analyze_screenshots(pil_images: list, dialect: str = "PostgreSQL") -> tuple[
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown(
-        '<p style="font-size:1rem;font-weight:600;color:#E2E8F0;margin:0 0 0.75rem;">'
+        '<p style="font-size:1rem;font-weight:600;color:#CBD5E1;margin:0 0 0.5rem;">'
         'How it works</p>',
         unsafe_allow_html=True,
     )
-    steps = [
-        ("1", "Upload 3\u20136 UI screenshots (list, form, detail)"),
-        ("2", "Choose your SQL dialect"),
-        ("3", "Click Generate Schema"),
-        ("4", "Review ER diagram + SQL"),
-    ]
-    for num, text in steps:
-        st.markdown(
-            f'<div style="display:flex;align-items:flex-start;gap:0.5rem;margin-bottom:0.5rem;">'
-            f'<span style="background:#1a1a24;color:#3B82F6;font-size:0.7rem;font-weight:700;'
-            f'width:1.3rem;height:1.3rem;border-radius:4px;display:flex;align-items:center;'
-            f'justify-content:center;flex-shrink:0;margin-top:1px;">{num}</span>'
-            f'<span style="font-size:0.9rem;color:#8A8A9E;line-height:1.4;">{text}</span>'
-            f'</div>',
-            unsafe_allow_html=True,
-        )
     st.markdown(
-        '<p style="font-size:0.8rem;color:#6B6B80;margin:0.25rem 0 0;">'
+        '<p style="font-size:0.9rem;color:#8A8A9E;line-height:1.8;margin:0;padding-left:0.25rem;">'
+        '1. Upload 3\u20136 UI screenshots (list, form, detail)<br>'
+        '2. Choose your SQL dialect<br>'
+        '3. Click Generate Schema<br>'
+        '4. Review ER diagram + SQL</p>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<p style="font-size:0.8rem;color:#6B6B80;margin:0.5rem 0 0;padding-left:0.25rem;">'
         '3 analyses per session \u00b7 No GPU required</p>',
         unsafe_allow_html=True,
     )
@@ -155,7 +147,7 @@ with st.sidebar:
     )
 
     st.divider()
-    with st.expander("\u26bf Use your own API key"):
+    with st.expander("\U0001f511 Use your own API key"):
         st.caption("If the admin key is expired or unavailable, paste your own Gemini API key here.")
         user_key = st.text_input(
             "Gemini API Key",
